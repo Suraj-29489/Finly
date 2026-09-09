@@ -115,8 +115,8 @@ object TransactionParser {
     private val ACCOUNT_LAST4_PATTERNS = listOf(
         Regex("""(?:a/?c|acct|account|card)\s*(?:no\.?|number)?\s*(?:ending\s*(?:in|with)?|is)\s*[*xX]*(\d{3,4})\b""", RegexOption.IGNORE_CASE),
         Regex("""\bending\s*(?:in|with)?\s*[*xX]*(\d{3,4})\b""", RegexOption.IGNORE_CASE),
-        Regex("""(?:a/?c|acct|account|card)\s*(?:no\.?|number)?[:\s]*[*xX]{2,}(\d{3,4})\b""", RegexOption.IGNORE_CASE),
-        Regex("""(?:\b|[*xX])[*xX]{2,}(\d{3,4})\b"""),
+        Regex("""(?:a/?c|acct|account|card)\s*(?:no\.?|number)?[:\s]*[*xX]+(\d{3,4})\b""", RegexOption.IGNORE_CASE),
+        Regex("""(?:\b|[*xX])[*xX]+(\d{3,4})\b"""),
         Regex("""\b(?:a/?c|acct|account|card)\s*(?:no\.?|number)?[:\s]+(\d{4})\b""", RegexOption.IGNORE_CASE)
     )
 

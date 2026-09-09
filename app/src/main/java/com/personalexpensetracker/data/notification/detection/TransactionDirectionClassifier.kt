@@ -163,7 +163,10 @@ object TransactionDirectionClassifier {
         val lowerText = combinedText.lowercase()
 
         // Check for failed/reversed transactions first — these are not actionable
-        if (FAILED_KEYWORDS.any { lowerText.contains(it) }) {
+        // Note: If text explicitly mentions a refund received/credited, "cancelled" refers to
+        // the underlying merchant order that was refunded, not a failed financial transaction.
+        val isRefund = lowerText.contains("refund")
+        if (!isRefund && FAILED_KEYWORDS.any { lowerText.contains(it) }) {
             return TransactionDirection.UNKNOWN
         }
 

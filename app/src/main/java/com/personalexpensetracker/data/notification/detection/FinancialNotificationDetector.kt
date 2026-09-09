@@ -35,7 +35,9 @@ object FinancialNotificationDetector {
         "cashback", "amount credited",
         // General transaction terms
         "a/c", "account", "acct", "bal", "balance",
-        "txn", "ref no", "ref:", "reference"
+        "txn", "ref no", "ref:", "reference",
+        // Common payment apps
+        "google pay", "gpay", "phonepe", "paytm", "bhim", "cred", "amazon pay"
     )
 
     /**
