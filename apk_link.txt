@@ -1,0 +1,19 @@
+FINLY APK DOWNLOAD LINKS:
+
+1. Official Permanent GitHub Release:
+https://github.com/Suraj-29489/Finly/raw/main/releases/Finly.apk
+
+2. Official GitHub Raw CDN Direct Link:
+https://raw.githubusercontent.com/Suraj-29489/Finly/main/releases/Finly.apk
+
+3. High-Speed Cloud Direct Download Mirror:
+https://tmpfiles.org/dl/1788946631.5aa2af56f1b70038/w3wK4E4ZoDVY/app-release.apk
+
+4. Cloud Landing Page:
+https://tmpfiles.org/w3wK4E4ZoDVY/app-release.apk
+
+APK Details:
+- App: Finly v1.0.0
+- Package: com.surajkoley.expensetracker
+- File Size: 11.11 MB
+- SHA-256: f8ab92538ec04ee4454cfa47051b8a8e2fe52e7138e2a8ba01e9730e2d7cb310
