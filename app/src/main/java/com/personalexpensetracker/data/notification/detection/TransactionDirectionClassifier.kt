@@ -45,6 +45,8 @@ object TransactionDirectionClassifier {
         "withdrawal of", "withdrawal", "cash withdrawn", "cash withdrawal", "atm withdrawal", "atm wdl", "atm w/d",
         "transferred to", "transferred for", "transfer to",
         "sent to", "money sent to", "money sent",
+        "sent from a/c", "sent from acct", "sent from account", "sent from your a/c", "sent from your account",
+        "sent from card", "sent from", "sent",
         "upi debit", "card purchase",
         "charged on", "charged to", "charged by", "charged",
         "pos transaction", "pos txn",
@@ -106,6 +108,8 @@ object TransactionDirectionClassifier {
         "payment successful", "payment made",
         "charged on", "charged to", "charged by", "charged",
         "sent to", "money sent to", "money sent",
+        "sent from a/c", "sent from acct", "sent from account", "sent from your a/c", "sent from your account",
+        "sent from card", "sent from", "sent",
         "transferred to",
         "dr for", "dr by", "dr with", "dr. for", "dr. by"
     )
@@ -204,6 +208,8 @@ object TransactionDirectionClassifier {
         val paymentToRegex = Regex("""\bpayment\b.+\bto\b(?!\s+(?:your\s+)?(?:a/?c|acct|account))""", RegexOption.IGNORE_CASE)
         val drRegex = Regex("""\b(?:is\s+)?dr\.?\s+(?:for|by|with|to)\b|\bdr\.?\s*[-−–—]?(?:₹|[Rr][Ss]\.?|INR|\$)\b""", RegexOption.IGNORE_CASE)
         val sentAmountRegex = Regex("""\b(?:you\s+)?sent\s+[-−–—]?(?:₹|[Rr][Ss]\.?|INR|\$)?\s*\d+""", RegexOption.IGNORE_CASE)
+        val amountSentRegex = Regex("""(?:₹|[Rr][Ss]\.?|INR|\$)?\s*\d+(?:\.\d+)?\s+sent\b""", RegexOption.IGNORE_CASE)
+        val sentFromAccountRegex = Regex("""\bsent\b[\s\S]*?\bfrom\s+(?:[A-Za-z0-9]+\s+)*(?:a/?c|acct|account|card)\b""", RegexOption.IGNORE_CASE)
         val hasNegativeAmount = hasNegativeDebitAmount(textForDebitCheck)
 
         val hasExplicitDebit = EXPLICIT_DEBIT_KEYWORDS.any { textForDebitCheck.contains(it) } ||
@@ -211,6 +217,8 @@ object TransactionDirectionClassifier {
                 paymentToRegex.containsMatchIn(textForDebitCheck) ||
                 drRegex.containsMatchIn(textForDebitCheck) ||
                 sentAmountRegex.containsMatchIn(textForDebitCheck) ||
+                amountSentRegex.containsMatchIn(textForDebitCheck) ||
+                sentFromAccountRegex.containsMatchIn(textForDebitCheck) ||
                 hasNegativeAmount
 
         // Rule 1: Definitive explicit signal with no conflicting explicit action
@@ -248,9 +256,10 @@ object TransactionDirectionClassifier {
         var score = 0
         // Check for outgoing transfer: "sent ... to" or "transferred ... to"
         // Explicitly exclude "transferred ... to your a/c" or "transferred ... to your account"
-        val outgoingTransfer = Regex("""\b(?:sent|transferred)\b.+\bto\b(?!\s+(?:your\s+)?(?:a/?c|acct|account))""", RegexOption.IGNORE_CASE)
+        val outgoingTransfer = Regex("""\b(?:sent|transferred)\b[\s\S]+?\bto\b(?!\s+(?:your\s+)?(?:a/?c|acct|account))""", RegexOption.IGNORE_CASE)
+        val hasInwardFrom = Regex("""\bfrom\s+(?!(?:your\s+)?(?:a/?c|acct|account|card|bank|savings))\b""", RegexOption.IGNORE_CASE).containsMatchIn(lowerText)
         if (outgoingTransfer.containsMatchIn(lowerText) &&
-            !lowerText.contains("from") && !lowerText.contains("received") && !lowerText.contains("credited")
+            !hasInwardFrom && !lowerText.contains("received") && !lowerText.contains("credited")
         ) {
             score += 15
         }

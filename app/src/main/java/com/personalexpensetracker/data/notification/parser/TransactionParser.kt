@@ -92,10 +92,10 @@ object TransactionParser {
      */
     private val MERCHANT_PATTERNS = listOf(
         // Explicit payee/sender indicators
-        Regex("""(?:to|towards|paid to|payment to|sent to|transferred to|received from|from|vpa[:\s]|payee[:\s]|merchant[:\s]|info[:\s])\s+(?!(?:₹|[Rr][Ss]\.?\s*|INR\s*|\$\s*))([A-Za-z0-9][A-Za-z0-9\s.&'@/-]{0,50}?)(?=(?:\s+(?:for|of|on|via|using|with|was|has|ref|txn|w\.e\.f|avl|bal|available|balance|successfully|successful|sms)|\s*$|\.\s|\.$))""", RegexOption.IGNORE_CASE),
+        Regex("""(?:to|towards|paid to|payment to|sent to|transferred to|received from|from|vpa[:\s]|payee[:\s]|merchant[:\s]|info[:\s])\s+(?!(?:₹|[Rr][Ss]\.?\s*|INR\s*|\$\s*))([A-Za-z0-9][A-Za-z0-9\s.&'@/-]{0,50}?)(?=(?:\s*(?:\(|\b(?:for|of|on|via|using|with|was|has|ref|txn|upi|not\s+you|call|w\.e\.f|avl|bal|available|balance|successfully|successful|sms)\b)|\s*$|\.\s|\.$))""", RegexOption.IGNORE_CASE),
         Regex("""(?:to|towards|paid to|payment to|sent to|transferred to|received from|from|vpa[:\s]|payee[:\s]|merchant[:\s]|info[:\s])\s+(?!(?:₹|[Rr][Ss]\.?\s*|INR\s*|\$\s*))([A-Za-z0-9][A-Za-z0-9\s.&'@/-]{0,50}?)(?:\s*[.\-])?\s*$""", RegexOption.IGNORE_CASE),
         // for / at / purchase at / purchase from / order at
-        Regex("""(?:for|at|purchase at|purchase from|order at)\s+(?!(?:₹|[Rr][Ss]\.?\s*|INR\s*|\$\s*))([A-Za-z0-9][A-Za-z0-9\s.&'@/-]{0,50}?)(?=(?:\s+(?:for|of|on|via|using|with|was|has|ref|txn|w\.e\.f|avl|bal|available|balance|successfully|successful|sms)|\s*$|\.\s|\.$))""", RegexOption.IGNORE_CASE),
+        Regex("""(?:for|at|purchase at|purchase from|order at)\s+(?!(?:₹|[Rr][Ss]\.?\s*|INR\s*|\$\s*))([A-Za-z0-9][A-Za-z0-9\s.&'@/-]{0,50}?)(?=(?:\s*(?:\(|\b(?:for|of|on|via|using|with|was|has|ref|txn|upi|not\s+you|call|w\.e\.f|avl|bal|available|balance|successfully|successful|sms)\b)|\s*$|\.\s|\.$))""", RegexOption.IGNORE_CASE),
         Regex("""(?:for|at|purchase at|purchase from|order at)\s+(?!(?:₹|[Rr][Ss]\.?\s*|INR\s*|\$\s*))([A-Za-z0-9][A-Za-z0-9\s.&'@/-]{0,50}?)(?:\s*[.\-])?\s*$""", RegexOption.IGNORE_CASE),
         // Fallback simple
         Regex("""(?:for|to|at|towards)\s+(?!(?:₹|[Rr][Ss]\.?\s*|INR\s*|\$\s*))([A-Za-z][A-Za-z0-9\s.&'@/-]{1,40})""", RegexOption.IGNORE_CASE)
@@ -308,8 +308,22 @@ object TransactionParser {
             s = s.substring(0, dotSpaceIndex).trim()
         }
 
+        // Truncate at parenthesis (e.g. "MAHESH COMPANY (UPI Ref:...")
+        if (s.contains("(")) {
+            s = s.substringBefore("(").trim()
+        }
+
+        // Truncate at "Not you" or "Call" if present in merchant
+        val lower = s.lowercase()
+        if (lower.contains("not you")) {
+            s = s.substring(0, lower.indexOf("not you")).trim()
+        }
+        if (lower.contains("call ")) {
+            s = s.substring(0, lower.indexOf("call ")).trim()
+        }
+
         // Clean trailing punctuation
-        s = s.trimEnd('.', '-', ',', ' ', ':')
+        s = s.trimEnd('.', '-', ',', ' ', ':', ';')
 
         // Clean trailing status or noise words
         val noiseWords = listOf("successfully", "successful", "completed", "approved", "done", "available", "balance", "sms")

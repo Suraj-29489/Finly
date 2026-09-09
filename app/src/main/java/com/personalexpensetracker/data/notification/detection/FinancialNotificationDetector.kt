@@ -134,21 +134,21 @@ object FinancialNotificationDetector {
 
     /**
      * Regex matching Indian TRAI-regulated commercial / transactional bank SMS sender headers:
-     * Examples: VK-HDFCBK, VM-SBIINB, AD-ICICIB, BZ-AXISBK, AX-KOTAKB, JM-PAYTMB
-     * Format: 2 alpha characters, optional hyphen, 5 to 9 alphanumeric characters.
+     * Examples: VK-SLCBNK-S, VA-SLCBNK-S, JM-SLCBNK-S, JX-HDFCBK-S, VK-HDFCBK, VM-SBIINB, AD-ICICIB
+     * Format: Optional 2 alpha characters and hyphen, 4 to 10 alphanumeric characters, optional suffix like -S, -T, -G.
      */
     private val TRAI_BANK_HEADER_REGEX = Regex(
-        """^[A-Za-z]{2}-?[A-Za-z0-9]{5,9}$"""
+        """^(?:[A-Za-z]{2}-)?[A-Za-z0-9]{4,10}(?:-[A-Za-z0-9]{1,4})?$"""
     )
 
     /**
      * Common bank and financial entity keywords in sender titles.
      */
     private val BANK_SENDER_KEYWORDS = listOf(
-        "bank", "banking", "hdfc", "sbi", "icici", "axis", "kotak", "pnb",
-        "bob", "canara", "union", "idfc", "rbl", "yes bank", "yesbnk",
+        "bank", "banking", "hdfc", "hdfcbk", "sbi", "sbiinb", "icici", "icicib", "axis", "axisbk",
+        "kotak", "kotakb", "pnb", "punjnb", "bob", "canara", "union", "idfc", "rbl", "yes bank", "yesbnk",
         "indusind", "federal", "hsbc", "citi", "standard chartered", "scb",
-        "cred", "paytm", "phonepe", "gpay", "google pay", "slice", "onecard",
+        "cred", "paytm", "paytmb", "phonepe", "gpay", "google pay", "slice", "slcbnk", "onecard",
         "jupiter", "fi money", "bhim", "amazon pay", "mobikwik"
     )
 

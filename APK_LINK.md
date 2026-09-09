@@ -20,8 +20,8 @@ Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
 |---|---|---|
 | **GitHub Permanent Release (Recommended)** | [⬇️ Download Finly.apk (GitHub)](https://github.com/Suraj-29489/Finly/raw/main/releases/Finly.apk) | Official Permanent Repository Hosting |
 | **GitHub Raw CDN** | [⬇️ Direct Raw CDN Link](https://raw.githubusercontent.com/Suraj-29489/Finly/main/releases/Finly.apk) | Direct CDN Download |
-| **High-Speed Cloud Mirror** | [⬇️ Instant Download Mirror](https://tmpfiles.org/dl/wowQ4bmPkKlj/finly.apk) | One-Click Direct Phone Download |
-| **Cloud Landing Page** | [🌐 Open Download Page](https://tmpfiles.org/wowQ4bmPkKlj/finly.apk) | Browser Download Page with Button |
+| **High-Speed Cloud Mirror** | [⬇️ Instant Download Mirror](https://tmpfiles.org/dl/wOwu4EP9orjO/finly.apk) | One-Click Direct Phone Download |
+| **Cloud Landing Page** | [🌐 Open Download Page](https://tmpfiles.org/wOwu4EP9orjO/finly.apk) | Browser Download Page with Button |
 
 ---
 
@@ -30,7 +30,7 @@ Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
 Scan this QR code with your Android phone's camera or Google Lens:
 
 ### Cloud Mirror QR Code (Instant One-Tap Download):
-![Finly Instant Cloud Download QR](https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Ftmpfiles.org%2Fdl%2FwowQ4bmPkKlj%2Ffinly.apk)
+![Finly Instant Cloud Download QR](https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Ftmpfiles.org%2Fdl%2FwOwu4EP9orjO%2Ffinly.apk)
 
 ### GitHub Permanent Release QR Code:
 ![Finly GitHub Download QR](https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Fgithub.com%2FSuraj-29489%2FFinly%2Fraw%2Fmain%2Freleases%2FFinly.apk)
@@ -51,7 +51,7 @@ Scan this QR code with your Android phone's camera or Google Lens:
 - **Signature Scheme:** `APK Signature Scheme v2 (Verified)`
 - **SHA-256 Checksum:**
   ```text
-  385a836a3629abedcb184a2120d252c0b5299a098c41eed811db8222e41a9b20
+  17b75f0f1f2f1d0c3faecfa432c9b4dffb6d02afba299b0290d9a27a10bc4d58
   ```
 
 ---
