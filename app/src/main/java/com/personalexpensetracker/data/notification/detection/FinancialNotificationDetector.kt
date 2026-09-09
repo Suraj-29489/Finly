@@ -193,4 +193,34 @@ object FinancialNotificationDetector {
 
         return hasStrongBankBody
     }
+
+    /**
+     * Determines whether a notification originating from an Email app (Gmail, Outlook, etc.)
+     * is specifically a bank or financial transaction email (and not a personal or marketing email).
+     */
+    fun isSpecificBankEmailNotification(
+        title: String?,
+        combinedText: String
+    ): Boolean {
+        if (combinedText.isBlank()) return false
+        val lowerText = combinedText.lowercase()
+
+        // 1. Must pass standard financial detection (keywords, amount, not OTP/spam)
+        if (!isFinancialNotification(combinedText)) return false
+
+        // 2. Must have account or transaction context (A/c, card, ending, xx1234, etc.)
+        val hasAccountContext = ACCOUNT_CONTEXT_INDICATORS.any { lowerText.contains(it) }
+
+        // 3. Must have explicit transactional action
+        val hasTransactionAction = lowerText.contains("debited") || lowerText.contains("credited") ||
+                lowerText.contains("spent") || lowerText.contains("paid") ||
+                lowerText.contains("withdrawn") || lowerText.contains("purchase")
+
+        // 4. Must identify bank sender or bank keyword in body/title
+        val hasBankSenderOrKeyword = isBankSender(title) ||
+                BANK_SENDER_KEYWORDS.any { lowerText.contains(it) } ||
+                Regex("""(?:alert|alerts|notification|statement|instaalert)""", RegexOption.IGNORE_CASE).containsMatchIn(title ?: "")
+
+        return hasAccountContext && hasTransactionAction && hasBankSenderOrKeyword
+    }
 }

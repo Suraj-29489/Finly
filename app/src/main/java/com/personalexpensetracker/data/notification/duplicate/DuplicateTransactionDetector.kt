@@ -28,12 +28,11 @@ class DuplicateTransactionDetector {
 
     companion object {
         /**
-         * Time window within which same-amount, same-merchant transactions
-         * are considered potential duplicates.
-         * Set to 2 minutes — bank notifications for the same transaction
-         * typically arrive within seconds.
+         * Time window within which same-amount, same-merchant or same-account
+         * transactions are considered potential duplicates across channels (SMS vs Email).
+         * Set to 60 minutes to account for email background sync delays.
          */
-        val DUPLICATE_TIME_TOLERANCE: Duration = Duration.ofMinutes(2)
+        val DUPLICATE_TIME_TOLERANCE: Duration = Duration.ofMinutes(60)
 
         /**
          * Maximum number of recent transactions to keep in memory.
@@ -55,6 +54,7 @@ class DuplicateTransactionDetector {
         val merchant: String?,
         val referenceId: String?,
         val notificationKey: String?,
+        val accountLast4: String?,
         val timestamp: Instant
     )
 
@@ -70,11 +70,10 @@ class DuplicateTransactionDetector {
     fun isDuplicate(transaction: ParsedTransaction): Boolean {
         evictExpiredEntries()
 
-        // Strategy 1: Reference ID match (strongest signal)
+        // Strategy 1: Reference ID match (strongest signal, accounts for prefix formatting)
         if (!transaction.referenceId.isNullOrBlank()) {
             val hasSameRef = recentTransactions.any { record ->
-                !record.referenceId.isNullOrBlank() &&
-                    record.referenceId.equals(transaction.referenceId, ignoreCase = true)
+                isReferenceMatch(record.referenceId, transaction.referenceId)
             }
             if (hasSameRef) return true
         }
@@ -88,7 +87,18 @@ class DuplicateTransactionDetector {
             if (hasSameKey) return true
         }
 
-        // Strategy 3: Amount + merchant + time proximity
+        // Strategy 3: Same amount + same account last-4 digits within time tolerance (Cross-channel SMS vs Email)
+        if (!transaction.accountLast4.isNullOrBlank()) {
+            val hasSameAccountAndAmount = recentTransactions.any { record ->
+                record.amount.compareTo(transaction.amount) == 0 &&
+                    !record.accountLast4.isNullOrBlank() &&
+                    record.accountLast4 == transaction.accountLast4 &&
+                    Duration.between(record.timestamp, transaction.transactionTime).abs() <= DUPLICATE_TIME_TOLERANCE
+            }
+            if (hasSameAccountAndAmount) return true
+        }
+
+        // Strategy 4: Amount + merchant + time proximity
         val hasSimilarTransaction = recentTransactions.any { record ->
             record.amount.compareTo(transaction.amount) == 0 &&
                 isMerchantMatch(record.merchant, transaction.merchant) &&
@@ -99,11 +109,44 @@ class DuplicateTransactionDetector {
         return false
     }
 
-    private fun isMerchantMatch(m1: String?, m2: String?): Boolean {
+    internal fun isReferenceMatch(ref1: String?, ref2: String?): Boolean {
+        if (ref1.isNullOrBlank() || ref2.isNullOrBlank()) return false
+        val clean1 = ref1.trim()
+        val clean2 = ref2.trim()
+        if (clean1.equals(clean2, ignoreCase = true)) return true
+
+        // Check if one contains the other (e.g. "UPI778899" vs "778899")
+        if (clean1.length >= 6 && clean2.length >= 6) {
+            if (clean1.contains(clean2, ignoreCase = true) || clean2.contains(clean1, ignoreCase = true)) {
+                return true
+            }
+            val digits1 = clean1.filter { it.isDigit() }
+            val digits2 = clean2.filter { it.isDigit() }
+            if (digits1.length >= 6 && digits2.length >= 6) {
+                if (digits1 == digits2 || digits1.contains(digits2) || digits2.contains(digits1)) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    internal fun isMerchantMatch(m1: String?, m2: String?): Boolean {
         if (m1.isNullOrBlank() || m2.isNullOrBlank()) return true
-        if (m1.equals(m2, ignoreCase = true)) return true
-        if (m1.contains("unknown", ignoreCase = true) || m2.contains("unknown", ignoreCase = true)) return true
-        if (m1.contains(m2, ignoreCase = true) || m2.contains(m1, ignoreCase = true)) return true
+        val clean1 = m1.trim().lowercase()
+        val clean2 = m2.trim().lowercase()
+        if (clean1 == clean2) return true
+        if (clean1.contains("unknown") || clean2.contains("unknown")) return true
+        if (clean1.contains("auto-captured") || clean2.contains("auto-captured")) return true
+        if (clean1.contains("income") || clean2.contains("income")) return true
+
+        // If one is a generic bank or alert title, treat as compatible
+        val bankKeywords = listOf("bank", "hdfc", "sbi", "icici", "axis", "kotak", "pnb", "alert", "instaalert", "messaging")
+        if (bankKeywords.any { clean1.contains(it) } || bankKeywords.any { clean2.contains(it) }) {
+            return true
+        }
+
+        if (clean1.contains(clean2) || clean2.contains(clean1)) return true
         return false
     }
 
@@ -119,6 +162,7 @@ class DuplicateTransactionDetector {
             merchant = transaction.merchant,
             referenceId = transaction.referenceId,
             notificationKey = transaction.notificationKey,
+            accountLast4 = transaction.accountLast4,
             timestamp = transaction.transactionTime
         )
         recentTransactions.addFirst(record)

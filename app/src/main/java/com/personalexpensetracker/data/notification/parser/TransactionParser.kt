@@ -101,6 +101,17 @@ object TransactionParser {
     )
 
     /**
+     * Patterns to extract account or card trailing digits (3-4 digits).
+     */
+    private val ACCOUNT_LAST4_PATTERNS = listOf(
+        Regex("""(?:a/?c|acct|account|card)\s*(?:no\.?|number)?\s*(?:ending\s*(?:in|with)?|is)\s*[*xX]*(\d{3,4})\b""", RegexOption.IGNORE_CASE),
+        Regex("""\bending\s*(?:in|with)?\s*[*xX]*(\d{3,4})\b""", RegexOption.IGNORE_CASE),
+        Regex("""(?:a/?c|acct|account|card)\s*(?:no\.?|number)?[:\s]*[*xX]{2,}(\d{3,4})\b""", RegexOption.IGNORE_CASE),
+        Regex("""(?:\b|[*xX])[*xX]{2,}(\d{3,4})\b"""),
+        Regex("""\b(?:a/?c|acct|account|card)\s*(?:no\.?|number)?[:\s]+(\d{4})\b""", RegexOption.IGNORE_CASE)
+    )
+
+    /**
      * Keywords that identify a notification title as a generic bank or system alert
      * rather than an actual merchant name.
      */
@@ -145,6 +156,9 @@ object TransactionParser {
         // Extract reference ID — optional
         val referenceId = extractReferenceId(contextText)
 
+        // Extract account/card trailing digits for cross-channel deduplication
+        val accountLast4 = extractAccountLast4(contextText)
+
         val defaultMerchant = if (direction == TransactionDirectionClassifier.TransactionDirection.CREDIT) "Income" else "Unknown Merchant"
 
         return ParsedTransaction(
@@ -154,7 +168,8 @@ object TransactionParser {
             transactionTime = notification.receivedAt,
             sourcePackage = notification.packageName,
             referenceId = referenceId,
-            notificationKey = notification.notificationKey
+            notificationKey = notification.notificationKey,
+            accountLast4 = accountLast4
         )
     }
 
@@ -339,6 +354,19 @@ object TransactionParser {
                 val refId = match.groupValues[1].trim()
                 if (refId.isNotBlank() && refId.length >= 3) {
                     return refId
+                }
+            }
+        }
+        return null
+    }
+
+    internal fun extractAccountLast4(text: String): String? {
+        for (pattern in ACCOUNT_LAST4_PATTERNS) {
+            val match = pattern.find(text)
+            if (match != null) {
+                val last4 = match.groupValues[1].trim()
+                if (last4.isNotBlank() && last4.length in 3..4) {
+                    return last4
                 }
             }
         }

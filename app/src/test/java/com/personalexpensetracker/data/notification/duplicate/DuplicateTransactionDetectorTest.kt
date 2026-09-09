@@ -67,9 +67,38 @@ class DuplicateTransactionDetectorTest {
     }
 
     @Test
-    fun `isDuplicate - returns false for same transaction outside time tolerance`() {
+    fun `isDuplicate - returns true for same transaction within 60 min email delivery delay`() {
         val now = Instant.now()
-        val txn1 = createTxn(amount = "250.00", merchant = "Zomato", time = now.minusSeconds(300)) // 5 mins ago
+        val txn1 = createTxn(amount = "250.00", merchant = "Zomato", time = now.minusSeconds(900)) // 15 mins ago (Email sync)
+        detector.recordTransaction(txn1)
+
+        val txn2 = createTxn(amount = "250.00", merchant = "Zomato", time = now)
+        assertTrue(detector.isDuplicate(txn2))
+    }
+
+    @Test
+    fun `isDuplicate - returns true for normalized reference ID variations`() {
+        val txn1 = createTxn(amount = "500.00", merchant = "Swiggy", refId = "UPI1234567890")
+        detector.recordTransaction(txn1)
+
+        val txn2 = createTxn(amount = "500.00", merchant = "Swiggy", refId = "1234567890")
+        assertTrue(detector.isDuplicate(txn2))
+    }
+
+    @Test
+    fun `isDuplicate - returns true for same amount and accountLast4 across different merchants or bank titles`() {
+        val now = Instant.now()
+        val txn1 = createTxn(amount = "350.00", merchant = "Starbucks", accountLast4 = "1234", time = now.minusSeconds(600))
+        detector.recordTransaction(txn1)
+
+        val txn2 = createTxn(amount = "350.00", merchant = "HDFC Bank Alerts", accountLast4 = "1234", time = now)
+        assertTrue(detector.isDuplicate(txn2))
+    }
+
+    @Test
+    fun `isDuplicate - returns false for same transaction outside 60 min time tolerance`() {
+        val now = Instant.now()
+        val txn1 = createTxn(amount = "250.00", merchant = "Zomato", time = now.minusSeconds(4500)) // 75 mins ago
         detector.recordTransaction(txn1)
 
         val txn2 = createTxn(amount = "250.00", merchant = "Zomato", time = now)
@@ -81,6 +110,7 @@ class DuplicateTransactionDetectorTest {
         merchant: String,
         refId: String? = null,
         key: String? = null,
+        accountLast4: String? = null,
         time: Instant = Instant.now()
     ): ParsedTransaction {
         return ParsedTransaction(
@@ -90,7 +120,8 @@ class DuplicateTransactionDetectorTest {
             transactionTime = time,
             sourcePackage = "com.test.app",
             referenceId = refId,
-            notificationKey = key
+            notificationKey = key,
+            accountLast4 = accountLast4
         )
     }
 }

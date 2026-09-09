@@ -29,8 +29,8 @@ object AutoExpenseCapturePipeline {
             instance ?: run {
                 val database = AppDatabase.getInstance(context.applicationContext)
                 val expenseRepository = ExpenseRepositoryImpl(database.expenseDao())
-                val incomeRepository = IncomeRepositoryImpl(database.incomeDao())
-                AutoExpenseCaptureProcessor(expenseRepository, sharedDuplicateDetector, incomeRepository).also {
+                // Only process debit transactions; skip credit messages as requested
+                AutoExpenseCaptureProcessor(expenseRepository, sharedDuplicateDetector, null).also {
                     instance = it
                 }
             }

@@ -1,12 +1,13 @@
-# 📱 Finly — Download & Installation Links (v1.0.1 Play Store Compliant)
+# 📱 Finly — Download & Installation Links (v1.0.2 Deduplication & Credit Fix)
 
 Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
 
 ---
 
 ## 🛡️ Play Store Compliant & Private
-- **Zero Risky Permissions**: Removed `RECEIVE_SMS` and `READ_SMS` in full compliance with Google Play Store SMS policies.
-- **Inbuilt Messaging System**: Uses Android's native `NotificationListenerService` to capture bank receipts from default messaging apps (Google Messages, Samsung Messages, Xiaomi, Oppo, Vivo, etc.) and UPI/Banking apps.
+- **Zero Risky Permissions**: No `RECEIVE_SMS` or `READ_SMS` (100% Google Play Store SMS policy compliant).
+- **Cross-Channel Deduplication**: Verifies transactions between Text SMS (default messaging app) and Email (Gmail/Outlook). If the same transaction arrives on both channels, Finly captures and records it **only once**!
+- **Strict Debit Only & Credit Skipping**: Correctly distinguishes debit transactions from credit receipts (including Indian UPI credit messages like *"credited by UPI payment from..."*). Credit messages are cleanly skipped without false expense creation.
 - **Strict Bank Message Filtering**: Captures **only** verified bank transaction messages (e.g. `VK-HDFCBK`, `VM-SBIINB`, `AD-ICICIB`) and completely ignores personal chats, family messages, and OTPs.
 
 ---
@@ -17,8 +18,8 @@ Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
 |---|---|---|
 | **GitHub Permanent Release (Recommended)** | [⬇️ Download Finly.apk (GitHub)](https://github.com/Suraj-29489/Finly/raw/main/releases/Finly.apk) | Official Permanent Repository Hosting |
 | **GitHub Raw CDN** | [⬇️ Direct Raw CDN Link](https://raw.githubusercontent.com/Suraj-29489/Finly/main/releases/Finly.apk) | Direct CDN Download |
-| **High-Speed Cloud Mirror** | [⬇️ Instant Download Mirror](https://tmpfiles.org/dl/1788947797.991b1754971c50c8/w0wm4s4FFiF3/finly.apk) | One-Click Direct Phone Download |
-| **Cloud Landing Page** | [🌐 Open Download Page](https://tmpfiles.org/w0wm4s4FFiF3/finly.apk) | Browser Download Page with Button |
+| **High-Speed Cloud Mirror** | [⬇️ Instant Download Mirror](https://tmpfiles.org/dl/wDwq4amuKtf4/finly.apk) | One-Click Direct Phone Download |
+| **Cloud Landing Page** | [🌐 Open Download Page](https://tmpfiles.org/wDwq4amuKtf4/finly.apk) | Browser Download Page with Button |
 
 ---
 
@@ -34,17 +35,17 @@ Scan this QR code with your Android phone's camera or Google Lens:
 
 - **App Name:** Finly
 - **Package ID:** `com.personalexpensetracker`
-- **Version:** `1.0.1`
-- **Version Code:** `1`
+- **Version:** `1.0.2`
+- **Version Code:** `2`
 - **File Name:** `Finly.apk`
-- **File Size:** `11.11 MB` (`11,645,881 bytes`)
+- **File Size:** `11.12 MB` (`11,662,261 bytes`)
 - **Permissions Declared:** `POST_NOTIFICATIONS` only (0 SMS permissions)
 - **Min Android SDK:** `Android 8.0 (API 26)`
 - **Target Android SDK:** `Android 15 (API 35)`
 - **Signature Scheme:** `APK Signature Scheme v2 (Verified)`
 - **SHA-256 Checksum:**
   ```text
-  06613f6792f5f6bd2005af7a0385e22d3fb435dd52823418514542b4d90d4837
+  dd2d10a42ce45a9a43782aebb067bca9dc06829addd45c16d49f47be4b6a7d00
   ```
 
 ---

@@ -227,4 +227,113 @@ class CrossSourceDeduplicationIntegrationTest {
         assertTrue("Duplicate credit SMS should be recognized as Duplicate", dupResult is NotificationProcessingResult.Duplicate)
         assertEquals(1, incomeRepository.getAllIncomes().first().size)
     }
+
+    @Test
+    fun `cross source - bank SMS followed by Gmail notification 15 minutes later creates only one expense`() = runTest {
+        val now = Instant.now()
+
+        // 1. Text SMS from default messaging app arrives first
+        val bankSms = RawNotificationData(
+            packageName = "com.google.android.apps.messaging",
+            title = "VK-HDFCBK",
+            text = "Alert! Rs 500.00 debited from HDFC Bank A/c xx1234 on 09-SEP-26 towards SWIGGY. Avl bal: Rs 15000. Ref: 425318920192.",
+            subText = null,
+            bigText = null,
+            receivedAt = now,
+            notificationKey = "sms_hdfc_500"
+        )
+
+        // 2. Email notification arrives 15 minutes later via Gmail
+        val bankEmail = RawNotificationData(
+            packageName = "com.google.android.gm",
+            title = "HDFC Bank InstaAlerts",
+            text = "Dear Customer, INR 500.00 has been debited from your account ending 1234 towards SWIGGY on 09-Sep-2026. Ref no. 425318920192. Available Balance is Rs. 15,000.00.",
+            subText = null,
+            bigText = null,
+            receivedAt = now.plusSeconds(900), // 15 mins later
+            notificationKey = "email_hdfc_500"
+        )
+
+        val r1 = processor.process(bankSms)
+        assertTrue("SMS should create expense", r1 is NotificationProcessingResult.ExpenseCreated)
+
+        val r2 = processor.process(bankEmail)
+        assertTrue("Email notification 15 mins later should be recognized as Duplicate", r2 is NotificationProcessingResult.Duplicate)
+
+        val expenses = expenseRepository.getAllExpenses().first()
+        assertEquals("Database must contain exactly one expense", 1, expenses.size)
+        assertEquals(BigDecimal("500.00"), expenses[0].amount)
+        assertEquals("SWIGGY", expenses[0].title)
+    }
+
+    @Test
+    fun `cross source - bank email arrives first with generic title, subsequent SMS enriches merchant and deduplicates`() = runTest {
+        val now = Instant.now()
+
+        // 1. Email arrives first with generic bank title in body
+        val bankEmail = RawNotificationData(
+            packageName = "com.google.android.gm",
+            title = "HDFC Bank Alerts",
+            text = "Debit Alert: INR 350.00 spent on A/c ending 1234. Avl Bal Rs 20,000.",
+            subText = null,
+            bigText = null,
+            receivedAt = now,
+            notificationKey = "email_hdfc_350"
+        )
+
+        // 2. SMS arrives 2 minutes later with specific merchant
+        val bankSms = RawNotificationData(
+            packageName = "com.google.android.apps.messaging",
+            title = "VK-HDFCBK",
+            text = "Rs 350.00 debited from A/c 1234 on 09-09-26 towards Starbucks. Ref 998877.",
+            subText = null,
+            bigText = null,
+            receivedAt = now.plusSeconds(120),
+            notificationKey = "sms_hdfc_350"
+        )
+
+        val r1 = processor.process(bankEmail)
+        assertTrue("Initial email should create expense", r1 is NotificationProcessingResult.ExpenseCreated)
+
+        val r2 = processor.process(bankSms)
+        assertTrue("Subsequent SMS should be recognized as duplicate", r2 is NotificationProcessingResult.Duplicate)
+
+        val expenses = expenseRepository.getAllExpenses().first()
+        assertEquals(1, expenses.size)
+        assertEquals(BigDecimal("350.00"), expenses[0].amount)
+        // Verify title was enriched from generic to Starbucks
+        assertEquals("Starbucks", expenses[0].title)
+    }
+
+    @Test
+    fun `SMS ingestion - credit SMS with complex UPI wording is skipped and creates 0 expenses`() = runTest {
+        val sms1 = RawNotificationData(
+            packageName = "com.google.android.apps.messaging",
+            title = "VK-HDFCBK",
+            text = "Dear Customer, your A/c ending 1234 has been credited with Rs 500.00 on 09-09-26 by UPI payment from Ramesh (UPI Ref no 1234567890). Avail bal Rs 5,500.00.",
+            subText = null,
+            bigText = null,
+            receivedAt = Instant.now(),
+            notificationKey = "credit_sms_1"
+        )
+
+        val sms2 = RawNotificationData(
+            packageName = "com.google.android.apps.messaging",
+            title = "AD-SBIINB",
+            text = "Payment of INR 1,500.00 received in your account ending 5678 via UPI from John.",
+            subText = null,
+            bigText = null,
+            receivedAt = Instant.now(),
+            notificationKey = "credit_sms_2"
+        )
+
+        val r1 = processor.process(sms1)
+        assertTrue("Credit SMS with UPI payment from Ramesh must be skipped", r1 is NotificationProcessingResult.CreditIgnored)
+
+        val r2 = processor.process(sms2)
+        assertTrue("Credit SMS with received via UPI must be skipped", r2 is NotificationProcessingResult.CreditIgnored)
+
+        val expenses = expenseRepository.getAllExpenses().first()
+        assertEquals("No expenses must be created for credit messages", 0, expenses.size)
+    }
 }

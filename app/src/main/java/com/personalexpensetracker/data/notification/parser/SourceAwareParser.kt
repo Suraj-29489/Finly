@@ -28,6 +28,8 @@ object SourceAwareParser {
         PAYMENT,
         /** SMS (bank sends transaction SMS) */
         SMS,
+        /** Email applications (Gmail, Outlook, Yahoo, etc.) */
+        EMAIL,
         /** Unknown or non-financial source */
         UNKNOWN
     }
@@ -77,7 +79,16 @@ object SourceAwareParser {
         "com.vivo.mms" to SourceType.SMS,
         "com.motorola.messaging" to SourceType.SMS,
         "com.truecaller" to SourceType.SMS,
-        "sms" to SourceType.SMS
+        "sms" to SourceType.SMS,
+
+        // Email (Gmail, Outlook, Yahoo, Samsung Email, Proton, etc.)
+        "com.google.android.gm" to SourceType.EMAIL,
+        "com.microsoft.office.outlook" to SourceType.EMAIL,
+        "com.yahoo.mobile.client.android.mail" to SourceType.EMAIL,
+        "com.samsung.android.email.provider" to SourceType.EMAIL,
+        "com.my.mail" to SourceType.EMAIL,
+        "ch.protonmail.android" to SourceType.EMAIL,
+        "com.zoho.mail" to SourceType.EMAIL
     )
 
     /**
@@ -102,8 +113,9 @@ object SourceAwareParser {
         // Check exact match first
         KNOWN_PACKAGES[packageName]?.let { return it }
 
-        // Check SMS / messaging apps pattern
         val lowerPackage = packageName.lowercase()
+
+        // Check SMS / messaging apps pattern
         if (lowerPackage == "sms" ||
             lowerPackage.contains(".mms") ||
             lowerPackage.contains(".messaging") ||
@@ -111,6 +123,14 @@ object SourceAwareParser {
             lowerPackage.contains("telephony")
         ) {
             return SourceType.SMS
+        }
+
+        // Check Email client pattern
+        if (lowerPackage.contains(".mail") ||
+            lowerPackage.contains(".email") ||
+            lowerPackage == "com.google.android.gm"
+        ) {
+            return SourceType.EMAIL
         }
 
         // Check package name hints
@@ -126,6 +146,13 @@ object SourceAwareParser {
      */
     fun isMessagingApp(packageName: String): Boolean {
         return identifySource(packageName) == SourceType.SMS
+    }
+
+    /**
+     * Returns true if the package represents an Email application (e.g. Gmail, Outlook).
+     */
+    fun isEmailApp(packageName: String): Boolean {
+        return identifySource(packageName) == SourceType.EMAIL
     }
 
     /**
@@ -148,6 +175,7 @@ object SourceAwareParser {
             SourceType.WALLET -> 0.7f
             SourceType.PAYMENT -> 0.6f
             SourceType.SMS -> 0.5f
+            SourceType.EMAIL -> 0.5f
             SourceType.UNKNOWN -> 0.0f
         }
     }

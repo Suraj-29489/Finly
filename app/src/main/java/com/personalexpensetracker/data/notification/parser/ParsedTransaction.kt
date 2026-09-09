@@ -19,6 +19,7 @@ import java.time.Instant
  * @property sourcePackage The originating app package name.
  * @property referenceId Transaction/reference ID if available from the notification.
  * @property notificationKey Android notification key for deduplication.
+ * @property accountLast4 Trailing 3-4 digits of the account/card if identified.
  */
 data class ParsedTransaction(
     val amount: BigDecimal,
@@ -27,5 +28,6 @@ data class ParsedTransaction(
     val transactionTime: Instant,
     val sourcePackage: String,
     val referenceId: String? = null,
-    val notificationKey: String? = null
+    val notificationKey: String? = null,
+    val accountLast4: String? = null
 )

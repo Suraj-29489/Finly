@@ -460,6 +460,10 @@
 | **7.2** | Default Messaging App Bank SMS Capture | `DefaultMessagingBankFilterTest` | Automated Unit Tests | **PASSED** |
 | **7.3** | Personal Chat & OTP Rejection | `FinancialNotificationDetector` | Automated Unit Tests | **PASSED** |
 | **7.4** | Android 13+ Restricted Settings Onboarding | `MainActivity`, `SettingsScreen` | Native Dialog & Intent Audit | **PASSED** |
+| **8.1** | Credit Message Misclassification Fix | `TransactionDirectionClassifier` | Automated Unit Tests | **PASSED** |
+| **8.2** | Strict Credit Message Skipping | `AutoExpenseCaptureProcessor` | Automated Integration Tests | **PASSED** |
+| **8.3** | Email vs SMS Deduplication (60m window) | `DuplicateTransactionDetector` | Automated Integration Tests | **PASSED** |
+| **8.4** | Persistent Room DB Deduplication & Enrichment | `AutoExpenseCaptureProcessor`, `Room DB` | Multi-Source Integration Tests | **PASSED** |
 
 ---
 
@@ -491,6 +495,64 @@
    - Added `DefaultMessagingBankFilterTest.kt` with 7 automated integration tests.
    - **433 / 433 unit tests passed** (0 failures, 0 skipped).
    - Release APK signed with Scheme v2 (`11.11 MB`).
+
+---
+
+# PHASE 14: CROSS-CHANNEL DEDUPLICATION (EMAIL VS TEXT SMS) & CREDIT MESSAGE SKIPPING
+
+## 1. Problem Addressed
+1. **Cross-Channel Duplicate Double-Entry (Email vs SMS)**:
+   - When banks send both an SMS notification (via default messaging app) and an email notification (via Gmail / Outlook / Yahoo Mail) for the same transaction, Finly was capturing both and updating the transaction twice.
+   - Root causes:
+     - `DuplicateTransactionDetector.DUPLICATE_TIME_TOLERANCE` was set to only 2 minutes. Email push notifications via Gmail background sync/Doze often arrive 3 to 15 minutes after SMS.
+     - Reference ID formatting differed (`UPI1234567890` vs `1234567890`) and failed exact string equality.
+     - Account trailing 4 digits were neither extracted nor correlated across sources.
+     - In-memory duplicate detector was lost if the app process restarted or was evicted.
+2. **Credit Counted as Debit**:
+   - Indian bank credit SMS notifications containing UPI terms (e.g. *"₹500 credited to A/c ending 1234 by UPI payment from Ramesh"*, *"Payment of INR 500 received via UPI"*) were scoring higher on debit keywords (`"upi payment"`, `"via upi"`, `"payment of"`), causing misclassification as `DEBIT` and inserting false expense records.
+3. **Explicit User Requirement to Skip Credit Messages**:
+   - The user explicitly requested to read only debit transactions and ignore/skip credit messages entirely.
+
+## 2. Technical Implementation
+1. **TransactionDirectionClassifier Overhaul**:
+   - Removed payment rails/channels (`"via upi"`, `"using upi"`, `"via card"`, `"upi payment"`) from `DEBIT_KEYWORDS`.
+   - Added explicit credit keywords: `"credited to"`, `"credited with"`, `"credited by"`, `"amount credited"`, `"payment received"`, `"transferred to your account"`, `"transferred to your a/c"`, `"received in your account"`, etc.
+   - Added regex rules to handle intervening amount/vendor text (e.g. `"Received Rs. 1000 in your account ... from Anita"`).
+   - Masked non-directional uses: `"credit card"`, `"credit limit"`, `"credit line"`, `"credit facility"`, `"debit card"`.
+   - Enforced unambiguous direction priority: explicit credit without debit action is **100% classified as CREDIT**.
+2. **Account Number Extraction (`accountLast4`)**:
+   - Added `accountLast4: String? = null` property to `ParsedTransaction.kt`.
+   - Implemented `extractAccountLast4(text: String)` in `TransactionParser.kt` to extract trailing card and account digits (`A/c ending 1234`, `A/c XX1234`, `card ending 8899`, `**1234`).
+3. **Multi-Layer Cross-Channel Deduplication**:
+   - Expanded `DUPLICATE_TIME_TOLERANCE` from 2 minutes to **60 minutes** to absorb email push delivery delays.
+   - Added `isReferenceMatch` with normalization and core digit sequence comparison (`UPI778899` matches `778899`).
+   - Added Strategy 3: Same amount + same `accountLast4` within 60 minutes = DUPLICATE.
+   - Added Persistent Room DB check in `AutoExpenseCaptureProcessor.kt` using `expenseRepository.getExpensesByDateRange(...)`.
+   - Enriched existing expense titles if an initial email arrived with a generic title and a subsequent SMS arrived with the specific merchant name.
+4. **Strict Debit Only & Credit Message Skipping**:
+   - In `AutoExpenseCapturePipeline.kt`, set `incomeRepository = null`.
+   - In `AutoExpenseCaptureProcessor.kt`, any notification classified as `CREDIT` immediately returns `NotificationProcessingResult.CreditIgnored(notification)` without writing to `expenseRepository` or creating any expense.
+5. **Email Application Recognition & Bank Email Filtering**:
+   - Added `SourceType.EMAIL` and known email package signatures (`com.google.android.gm`, `com.microsoft.office.outlook`, `com.yahoo.mobile.client.android.mail`, etc.) to `SourceAwareParser.kt`.
+   - Added `isSpecificBankEmailNotification(title, combinedText)` in `FinancialNotificationDetector.kt` to ensure personal and marketing emails are rejected.
+
+## 3. Automated Test Suite & Verification Results
+- `TransactionDirectionClassifierTest.kt`:
+  - Verified credit SMS with UPI phrasing (`"credited by UPI payment from Ramesh"`, `"received via UPI from Anita"`, `"INR 5,000 transferred to your account from Ramesh"`) are classified as `CREDIT`.
+  - Verified debit transactions with UPI/cards are classified as `DEBIT`.
+- `DuplicateTransactionDetectorTest.kt`:
+  - Verified 15-minute delayed notification (email sync delay) is recognized as `Duplicate`.
+  - Verified reference ID normalization (`UPI1234567890` vs `1234567890`) is recognized as `Duplicate`.
+  - Verified same amount + same `accountLast4` within 60 minutes is recognized as `Duplicate`.
+- `CrossSourceDeduplicationIntegrationTest.kt`:
+  - Verified Bank SMS followed by Gmail notification 15 minutes later creates **only 1 expense** in database.
+  - Verified generic bank email followed by specific merchant SMS deduplicates and enriches title to merchant name.
+  - Verified credit SMS with UPI wording is skipped and creates **0 expenses**.
+- **Master Test Suite Execution**:
+  - Ran `./gradlew testDebugUnitTest`: **439 / 439 unit tests PASSED (100% success rate)**.
+- **Release Build**:
+  - Ran `./gradlew assembleRelease`: **BUILD SUCCESSFUL in 16s**.
+  - Generated signed `Finly.apk` (v1.0.2, versionCode 2, 11.12 MB, SHA-256: `dd2d10a42ce45a9a43782aebb067bca9dc06829addd45c16d49f47be4b6a7d00`).
 
 ---
 *Log updated and certified on September 09, 2026.*

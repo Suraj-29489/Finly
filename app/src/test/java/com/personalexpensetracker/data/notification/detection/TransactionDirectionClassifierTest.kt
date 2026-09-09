@@ -25,6 +25,12 @@ class TransactionDirectionClassifierTest {
         assertEquals(TransactionDirection.CREDIT, TransactionDirectionClassifier.classify("Cash deposited: INR 10,000 in your savings A/c"))
         assertEquals(TransactionDirection.CREDIT, TransactionDirectionClassifier.classify("Money received: ₹1,500 from John via PhonePe"))
         assertEquals(TransactionDirection.CREDIT, TransactionDirectionClassifier.classify("Cashback credited: ₹25 on your recent purchase"))
+        assertEquals(TransactionDirection.CREDIT, TransactionDirectionClassifier.classify("Dear Customer, your A/c ending 1234 has been credited with Rs 500.00 on 09-09-26 by UPI payment from Ramesh (UPI Ref no 1234567890). Avail bal Rs 5,500.00."))
+        assertEquals(TransactionDirection.CREDIT, TransactionDirectionClassifier.classify("Rs 500.00 credited to your A/c XX1234 on 09-09-26 via UPI from john@okaxis. Ref 123456. -HDFC Bank"))
+        assertEquals(TransactionDirection.CREDIT, TransactionDirectionClassifier.classify("Received Rs. 1000 in your account XXX1234 via UPI from Anita on 09-Sep-26. UPI Ref 987654321."))
+        assertEquals(TransactionDirection.CREDIT, TransactionDirectionClassifier.classify("Your A/c ending 1234 is credited with INR 2,000.00 on 09-Sep-26 towards payment from ACME Corp via UPI."))
+        assertEquals(TransactionDirection.CREDIT, TransactionDirectionClassifier.classify("INR 5,000 transferred to your account ending 1234 from Ramesh. UPI txn ref 123456."))
+        assertEquals(TransactionDirection.CREDIT, TransactionDirectionClassifier.classify("Payment of INR 500 received in your account ending 1234 via UPI from John."))
     }
 
     @Test
