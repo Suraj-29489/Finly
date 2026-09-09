@@ -34,27 +34,36 @@ object TransactionParser {
     /**
      * Regex to match Indian currency amounts with prefix:
      * ₹450, Rs 450, Rs. 450, INR 450, ₹1,250.50, Rs.1,250, etc.
+     * Also matches negative amounts: -₹450, -Rs 450, -Rs. 450, -INR 450, ₹-450, Rs.-450, etc.
      */
     private val AMOUNT_PREFIX_REGEX = Regex(
-        """(?:₹|[Rr][Ss]\.?\s*|INR\s*)\s*((?:\d{1,3}(?:,\d{2,3})*|\d+)(?:\.\d{1,2})?)(?!\d)""",
+        """(?:[-−–—]\s*)?(?:₹|[Rr][Ss]\.?\s*|INR\s*|\$\s*)(?:\s*[-−–—])?\s*((?:\d{1,3}(?:,\d{2,3})*|\d+)(?:\.\d{1,2})?)(?!\d)""",
         RegexOption.IGNORE_CASE
     )
 
     /**
      * Fallback: amount followed by currency indicator.
-     * E.g., "1,250 INR", "450 rupees", "500 rs"
+     * E.g., "1,250 INR", "450 rupees", "500 rs", "-500 INR"
      */
     private val AMOUNT_SUFFIX_REGEX = Regex(
-        """((?:\d{1,3}(?:,\d{2,3})*|\d+)(?:\.\d{1,2})?)\s*(?:₹|[Rr][Ss]\.?|INR|rupees?)(?!\d)""",
+        """(?:[-−–—]\s*)?((?:\d{1,3}(?:,\d{2,3})*|\d+)(?:\.\d{1,2})?)\s*(?:₹|[Rr][Ss]\.?|INR|rupees?|\$)(?!\d)""",
         RegexOption.IGNORE_CASE
     )
 
     /**
+     * Currency-less negative numbers representing debits/deductions.
+     * E.g., "-1", "-1.00", "-500", "-250.50", "Txn: -1"
+     */
+    private val AMOUNT_NEGATIVE_REGEX = Regex(
+        """(?:^|[\s:;(\[|])[-−–—]\s*((?:\d{1,3}(?:,\d{2,3})*|\d+)(?:\.\d{1,2})?)(?!\d)"""
+    )
+
+    /**
      * Currency-less amount directly following debit action verbs.
-     * E.g., "debited by 450.00", "debited for 450", "spent 1200", "paid 350.50"
+     * E.g., "debited by 450.00", "debited for 450", "spent 1200", "paid 350.50", "sent 500"
      */
     private val AMOUNT_DEBIT_VERB_REGEX = Regex(
-        """(?:debited\s*(?:by|for|of|with)?|spent|paid|withdrawn\s*(?:by|for|of)?)\s*[:\s]+((?:\d{1,3}(?:,\d{2,3})*|\d+)(?:\.\d{1,2})?)(?!\d)""",
+        """(?:debited\s*(?:by|for|of|with)?|spent|paid|withdrawn\s*(?:by|for|of)?|sent|transferred|deducted\s*(?:by|for)?)\s*[:\s]+((?:\d{1,3}(?:,\d{2,3})*|\d+)(?:\.\d{1,2})?)(?!\d)""",
         RegexOption.IGNORE_CASE
     )
 
@@ -72,7 +81,7 @@ object TransactionParser {
      * is the actual debited transaction amount.
      */
     private val DEBIT_ACTION_REGEX = Regex(
-        """(?:debited\s*(?:for|by|of|with)?|spent|paid|purchase\s*(?:of|for)?|deducted|withdrawn\s*(?:by|of|for)?|sent|transferred|charge\s*of|payment\s*(?:of|for)|txn\s*of)""",
+        """(?:debited\s*(?:for|by|of|with)?|spent|paid|purchase\s*(?:of|for)?|deducted|withdrawn\s*(?:by|of|for)?|sent|transferred|charge\s*of|payment\s*(?:of|for)|txn\s*of|dr\.?\s*(?:for|by|with|of)?)""",
         RegexOption.IGNORE_CASE
     )
 
@@ -193,7 +202,7 @@ object TransactionParser {
 
         val candidates = mutableListOf<AmountCandidate>()
 
-        fun evaluateCandidate(amount: BigDecimal, start: Int, end: Int) {
+        fun evaluateCandidate(amount: BigDecimal, start: Int, end: Int, forceDebit: Boolean = false) {
             val preceding = text.substring((start - 40).coerceAtLeast(0), start)
             val sentenceStart = preceding.lastIndexOfAny(charArrayOf('.', ';', '\n', '|')).let { if (it >= 0) it + 1 else 0 }
             val localPreceding = preceding.substring(sentenceStart)
@@ -203,32 +212,43 @@ object TransactionParser {
             val localFollowing = following.substring(0, sentenceEnd)
 
             val isBalance = BALANCE_PREFIX_REGEX.containsMatchIn(localPreceding)
-            val isDebit = DEBIT_ACTION_REGEX.containsMatchIn(localPreceding) || DEBIT_ACTION_REGEX.containsMatchIn(localFollowing)
+            val isDebit = forceDebit || DEBIT_ACTION_REGEX.containsMatchIn(localPreceding) || DEBIT_ACTION_REGEX.containsMatchIn(localFollowing)
 
             candidates.add(AmountCandidate(amount, start, end, isBalance, isDebit))
         }
 
-        // 1. Check currency prefix matches: ₹450, Rs 450, INR 450
+        // 1. Check currency prefix matches: ₹450, Rs 450, INR 450, -₹500, ₹-500
         for (match in AMOUNT_PREFIX_REGEX.findAll(text)) {
             val amount = parseAmountString(match.groupValues[1]) ?: continue
-            evaluateCandidate(amount, match.range.first, match.range.last)
+            val hasMinus = match.value.contains("-") || match.value.contains("−") || match.value.contains("–") || match.value.contains("—")
+            evaluateCandidate(amount, match.range.first, match.range.last, forceDebit = hasMinus)
         }
 
-        // 2. Check currency suffix matches: 1,250 INR, 500 rupees
+        // 2. Check currency suffix matches: 1,250 INR, 500 rupees, -500 INR
         for (match in AMOUNT_SUFFIX_REGEX.findAll(text)) {
             val amount = parseAmountString(match.groupValues[1]) ?: continue
             val start = match.range.first
             if (candidates.any { it.startIndex == start }) continue
-            evaluateCandidate(amount, start, match.range.last)
+            val hasMinus = match.value.contains("-") || match.value.contains("−") || match.value.contains("–") || match.value.contains("—")
+            evaluateCandidate(amount, start, match.range.last, forceDebit = hasMinus)
         }
 
-        // 3. Check currency-less debit verbs: "debited by 450.00", "spent 1200"
+        // 3. Check currency-less debit verbs: "debited by 450.00", "spent 1200", "sent 500"
         for (match in AMOUNT_DEBIT_VERB_REGEX.findAll(text)) {
             val amount = parseAmountString(match.groupValues[1]) ?: continue
             val start = match.range.first
             if (candidates.none { it.amount.compareTo(amount) == 0 && Math.abs(it.startIndex - start) < 20 }) {
                 candidates.add(AmountCandidate(amount, start, match.range.last, isBalance = false, isDebitAction = true))
             }
+        }
+
+        // 4. Check negative currency-less numbers: "-1", "-1.00", "-500", "-250.50", "Txn: -1"
+        for (match in AMOUNT_NEGATIVE_REGEX.findAll(text)) {
+            val amount = parseAmountString(match.groupValues[1]) ?: continue
+            val start = match.range.first
+            // Skip if this position was already covered by currency prefix/suffix
+            if (candidates.any { Math.abs(it.startIndex - start) < 4 }) continue
+            evaluateCandidate(amount, start, match.range.last, forceDebit = true)
         }
 
         if (candidates.isEmpty()) return null
@@ -247,6 +267,11 @@ object TransactionParser {
     private fun parseAmountString(amountStr: String): BigDecimal? {
         return try {
             val cleaned = amountStr.replace(",", "")
+                .replace("-", "")
+                .replace("−", "")
+                .replace("–", "")
+                .replace("—", "")
+                .trim()
             val amount = BigDecimal(cleaned).setScale(2, RoundingMode.HALF_UP)
             if (amount > BigDecimal.ZERO) amount else null
         } catch (e: NumberFormatException) {
@@ -325,10 +350,13 @@ object TransactionParser {
         if (lower.startsWith("inr") || lower.startsWith("rs") || lower.startsWith("₹") || lower.startsWith("$")) {
             return true
         }
+        if (lower.startsWith("-") || lower.startsWith("−") || lower.startsWith("–") || lower.startsWith("—")) {
+            return true
+        }
         if (lower.endsWith("inr") || lower.endsWith("rupees") || lower.endsWith("rs")) {
             return true
         }
-        if (lower.matches(Regex("""^[\d\s.,]+$"""))) {
+        if (lower.matches(Regex("""^[-−–—]?[\d\s.,]+$"""))) {
             return true
         }
         return false
@@ -349,10 +377,12 @@ object TransactionParser {
 
     internal fun extractReferenceId(text: String): String? {
         for (pattern in REFERENCE_PATTERNS) {
-            val match = pattern.find(text)
-            if (match != null) {
-                val refId = match.groupValues[1].trim()
-                if (refId.isNotBlank() && refId.length >= 3) {
+            for (match in pattern.findAll(text)) {
+                val refId = match.groupValues[1].trim().trimEnd('.', '-')
+                val lower = refId.lowercase()
+                val isCurrencyOrNegative = refId.startsWith("-") || refId.startsWith("−") ||
+                        lower.startsWith("inr") || lower.startsWith("rs") || lower.startsWith("₹") || lower.startsWith("$")
+                if (refId.isNotBlank() && refId.length >= 3 && !isCurrencyOrNegative) {
                     return refId
                 }
             }

@@ -336,4 +336,25 @@ class CrossSourceDeduplicationIntegrationTest {
         val expenses = expenseRepository.getAllExpenses().first()
         assertEquals("No expenses must be created for credit messages", 0, expenses.size)
     }
+
+    @Test
+    fun `pipeline - negative amount notification creates expense with positive amount`() = runTest {
+        val negNotif = RawNotificationData(
+            packageName = "com.google.android.apps.nbu.paisa.user",
+            title = "Google Pay",
+            text = "Txn: -1 to Ramesh. Ref: 987654321",
+            subText = null,
+            bigText = null,
+            receivedAt = Instant.now(),
+            notificationKey = "neg_txn_1"
+        )
+
+        val result = processor.process(negNotif)
+        assertTrue("Negative amount notification must create an expense", result is NotificationProcessingResult.ExpenseCreated)
+
+        val expenses = expenseRepository.getAllExpenses().first()
+        assertEquals(1, expenses.size)
+        assertEquals(BigDecimal("1.00"), expenses[0].amount)
+        assertEquals("Ramesh", expenses[0].title)
+    }
 }

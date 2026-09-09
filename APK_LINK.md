@@ -1,4 +1,4 @@
-# 📱 Finly — Download & Installation Links (v1.0.2 Deduplication & Credit Fix)
+# 📱 Finly — Download & Installation Links (v1.0.3 Negative Amount & Debit Expansion)
 
 Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
 
@@ -6,6 +6,8 @@ Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
 
 ## 🛡️ Play Store Compliant & Private
 - **Zero Risky Permissions**: No `RECEIVE_SMS` or `READ_SMS` (100% Google Play Store SMS policy compliant).
+- **Negative Amount (- terms) Detection**: Intelligently detects and parses negative debit amounts (`-1`, `-₹500`, `-Rs. 100`, `-50.00`, `-INR 250`, `₹-500`) as definitive debit transactions and saves them with clean positive values.
+- **Comprehensive Debit Message Keywords**: Expansively handles all debit variations including `"sent"`, `"paid at"`, `"debited"`, `"withdrawn"`, `"transferred to"`, `"charged"`, `"amount deducted"`, and Indian bank Dr statements (`"is Dr. for Rs 500"`).
 - **Cross-Channel Deduplication**: Verifies transactions between Text SMS (default messaging app) and Email (Gmail/Outlook). If the same transaction arrives on both channels, Finly captures and records it **only once**!
 - **Strict Debit Only & Credit Skipping**: Correctly distinguishes debit transactions from credit receipts (including Indian UPI credit messages like *"credited by UPI payment from..."*). Credit messages are cleanly skipped without false expense creation.
 - **Strict Bank Message Filtering**: Captures **only** verified bank transaction messages (e.g. `VK-HDFCBK`, `VM-SBIINB`, `AD-ICICIB`) and completely ignores personal chats, family messages, and OTPs.
@@ -18,8 +20,8 @@ Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
 |---|---|---|
 | **GitHub Permanent Release (Recommended)** | [⬇️ Download Finly.apk (GitHub)](https://github.com/Suraj-29489/Finly/raw/main/releases/Finly.apk) | Official Permanent Repository Hosting |
 | **GitHub Raw CDN** | [⬇️ Direct Raw CDN Link](https://raw.githubusercontent.com/Suraj-29489/Finly/main/releases/Finly.apk) | Direct CDN Download |
-| **High-Speed Cloud Mirror** | [⬇️ Instant Download Mirror](https://tmpfiles.org/dl/wDwq4amuKtf4/finly.apk) | One-Click Direct Phone Download |
-| **Cloud Landing Page** | [🌐 Open Download Page](https://tmpfiles.org/wDwq4amuKtf4/finly.apk) | Browser Download Page with Button |
+| **High-Speed Cloud Mirror** | [⬇️ Instant Download Mirror](https://tmpfiles.org/dl/wlwH47mxRHuo/finly.apk) | One-Click Direct Phone Download |
+| **Cloud Landing Page** | [🌐 Open Download Page](https://tmpfiles.org/wlwH47mxRHuo/finly.apk) | Browser Download Page with Button |
 
 ---
 
@@ -27,7 +29,11 @@ Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
 
 Scan this QR code with your Android phone's camera or Google Lens:
 
-![Finly APK Download QR](https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Fgithub.com%2FSuraj-29489%2FFinly%2Fraw%2Fmain%2Freleases%2FFinly.apk)
+### Cloud Mirror QR Code (Instant One-Tap Download):
+![Finly Instant Cloud Download QR](https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Ftmpfiles.org%2Fdl%2FwlwH47mxRHuo%2Ffinly.apk)
+
+### GitHub Permanent Release QR Code:
+![Finly GitHub Download QR](https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https%3A%2F%2Fgithub.com%2FSuraj-29489%2FFinly%2Fraw%2Fmain%2Freleases%2FFinly.apk)
 
 ---
 
@@ -35,17 +41,17 @@ Scan this QR code with your Android phone's camera or Google Lens:
 
 - **App Name:** Finly
 - **Package ID:** `com.personalexpensetracker`
-- **Version:** `1.0.2`
-- **Version Code:** `2`
+- **Version:** `1.0.3`
+- **Version Code:** `3`
 - **File Name:** `Finly.apk`
-- **File Size:** `11.12 MB` (`11,662,261 bytes`)
+- **File Size:** `11.12 MB` (`11,665,038 bytes`)
 - **Permissions Declared:** `POST_NOTIFICATIONS` only (0 SMS permissions)
 - **Min Android SDK:** `Android 8.0 (API 26)`
 - **Target Android SDK:** `Android 15 (API 35)`
 - **Signature Scheme:** `APK Signature Scheme v2 (Verified)`
 - **SHA-256 Checksum:**
   ```text
-  dd2d10a42ce45a9a43782aebb067bca9dc06829addd45c16d49f47be4b6a7d00
+  eef1ca64e5cc0347f85dab50ab92a43cb07cc045ad161cc46c1b54ab9d634648
   ```
 
 ---

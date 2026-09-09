@@ -18,14 +18,17 @@ object FinancialNotificationDetector {
     private val FINANCIAL_KEYWORDS = listOf(
         // Debit indicators
         "debited", "debit", "spent", "paid", "payment",
-        "purchase", "transaction", "withdrawn", "withdrawal",
+        "purchase", "transaction", "withdrawn", "withdrawal", "atm withdrawal",
         "amount deducted", "amount paid", "payment successful",
         "payment made", "money sent", "sent", "transferred", "transfer",
+        "charged", "deducted",
+        // Indian bank Dr indicators
+        "dr.", "dr for", "dr by", "dr with", "is dr",
         // UPI-specific
         "upi payment", "upi transaction", "upi transfer", "upi",
         // Card-specific
         "card payment", "card purchase", "card transaction",
-        "charged", "pos transaction",
+        "pos transaction", "pos txn",
         // Credit indicators (still financial — classification happens later)
         "credited", "credit", "received", "deposit",
         "money received", "salary credited", "refund",
@@ -57,6 +60,17 @@ object FinancialNotificationDetector {
         "₹", "rs", "rs.", "inr", "usd", "\\$"
     )
 
+    private val NEGATIVE_AMOUNT_DETECTOR_REGEX = Regex(
+        """(?:^|[\s:;(\[|])[-−–—]\s*(?:₹|[Rr][Ss]\.?\s*|INR\s*|\$\s*)?\d+"""
+    )
+
+    /**
+     * Checks if text contains a negative amount like -1, -500, -₹500, -Rs 100
+     */
+    fun hasNegativeAmount(text: String): Boolean {
+        return NEGATIVE_AMOUNT_DETECTOR_REGEX.containsMatchIn(text)
+    }
+
     /**
      * Determines whether the given notification text is likely a financial
      * transaction notification.
@@ -86,8 +100,8 @@ object FinancialNotificationDetector {
         // Check for financial keywords
         val hasFinancialKeyword = FINANCIAL_KEYWORDS.any { lowerText.contains(it) }
 
-        // Check for amount indicators (currency symbols/words)
-        val hasAmountIndicator = AMOUNT_INDICATORS.any { lowerText.contains(it) }
+        // Check for amount indicators (currency symbols/words or negative amounts)
+        val hasAmountIndicator = AMOUNT_INDICATORS.any { lowerText.contains(it) } || hasNegativeAmount(lowerText)
 
         // Strong signal: both a financial keyword AND an amount indicator
         if (hasFinancialKeyword && hasAmountIndicator) return true
@@ -186,8 +200,15 @@ object FinancialNotificationDetector {
         }
 
         // If title is not standard TRAI header, require very strong bank signals in body:
-        // (explicit debit/credit + account reference + amount + bank mention)
-        val hasStrongBankBody = (lowerText.contains("debited") || lowerText.contains("credited")) &&
+        // (explicit debit/credit/negative amount + account reference + bank mention)
+        val hasDebitOrCreditSignal = lowerText.contains("debited") || lowerText.contains("credited") ||
+                lowerText.contains("spent") || lowerText.contains("paid") ||
+                lowerText.contains("sent") || lowerText.contains("transferred") ||
+                lowerText.contains("withdrawn") || lowerText.contains("purchase") ||
+                lowerText.contains("charged") || lowerText.contains("dr.") || lowerText.contains("dr by") ||
+                hasNegativeAmount(lowerText)
+
+        val hasStrongBankBody = hasDebitOrCreditSignal &&
                 hasAccountContext &&
                 BANK_SENDER_KEYWORDS.any { lowerText.contains(it) }
 
@@ -214,7 +235,11 @@ object FinancialNotificationDetector {
         // 3. Must have explicit transactional action
         val hasTransactionAction = lowerText.contains("debited") || lowerText.contains("credited") ||
                 lowerText.contains("spent") || lowerText.contains("paid") ||
-                lowerText.contains("withdrawn") || lowerText.contains("purchase")
+                lowerText.contains("withdrawn") || lowerText.contains("purchase") ||
+                lowerText.contains("sent") || lowerText.contains("transferred") ||
+                lowerText.contains("charged") || lowerText.contains("deducted") ||
+                lowerText.contains("dr.") || lowerText.contains("dr by") ||
+                hasNegativeAmount(lowerText)
 
         // 4. Must identify bank sender or bank keyword in body/title
         val hasBankSenderOrKeyword = isBankSender(title) ||

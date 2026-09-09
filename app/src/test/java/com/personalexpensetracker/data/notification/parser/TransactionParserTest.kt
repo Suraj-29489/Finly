@@ -23,9 +23,32 @@ class TransactionParserTest {
     }
 
     @Test
+    fun `extractAmount - parses negative amounts with currency prefix and stores positive value`() {
+        assertEquals(BigDecimal("500.00"), TransactionParser.extractAmount("-₹500 spent at Swiggy"))
+        assertEquals(BigDecimal("500.00"), TransactionParser.extractAmount("- ₹500 debited"))
+        assertEquals(BigDecimal("500.00"), TransactionParser.extractAmount("₹-500 debited"))
+        assertEquals(BigDecimal("100.00"), TransactionParser.extractAmount("-Rs 100 paid"))
+        assertEquals(BigDecimal("250.50"), TransactionParser.extractAmount("-Rs. 250.50 sent"))
+        assertEquals(BigDecimal("100.00"), TransactionParser.extractAmount("Rs.-100 debited"))
+        assertEquals(BigDecimal("1500.00"), TransactionParser.extractAmount("-INR 1500 paid"))
+        assertEquals(BigDecimal("250.00"), TransactionParser.extractAmount("INR -250 charged"))
+        assertEquals(BigDecimal("50.00"), TransactionParser.extractAmount("-$50 spent"))
+    }
+
+    @Test
+    fun `extractAmount - parses negative currency-less numbers and stores positive value`() {
+        assertEquals(BigDecimal("1.00"), TransactionParser.extractAmount("Txn: -1"))
+        assertEquals(BigDecimal("1.00"), TransactionParser.extractAmount("-1 debited from A/c"))
+        assertEquals(BigDecimal("1.00"), TransactionParser.extractAmount("A/c XX1234: -1.00 to Ramesh"))
+        assertEquals(BigDecimal("500.00"), TransactionParser.extractAmount("A/c 1234: -500.00"))
+        assertEquals(BigDecimal("250.50"), TransactionParser.extractAmount("Payment: -250.50"))
+    }
+
+    @Test
     fun `extractAmount - parses suffix currency formats`() {
         assertEquals(BigDecimal("1250.00"), TransactionParser.extractAmount("Paid 1,250 INR to store"))
         assertEquals(BigDecimal("500.00"), TransactionParser.extractAmount("Debited 500 rupees"))
+        assertEquals(BigDecimal("300.00"), TransactionParser.extractAmount("-300 INR spent"))
     }
 
     @Test
@@ -140,6 +163,25 @@ class TransactionParserTest {
         assertNotNull(parsed)
         assertEquals(BigDecimal("1200.00"), parsed?.amount)
         assertEquals("Amazon", parsed?.merchant)
+    }
+
+    @Test
+    fun `parse - successfully handles negative amount notifications`() {
+        val raw = RawNotificationData(
+            packageName = "com.google.android.apps.nbu.paisa.user",
+            title = "Google Pay",
+            text = "Txn: -1 to Ramesh. Ref: 987654321",
+            subText = null,
+            bigText = null,
+            receivedAt = Instant.now(),
+            notificationKey = "key_neg_1"
+        )
+        val parsed = TransactionParser.parse(raw, TransactionDirection.DEBIT)
+        assertNotNull(parsed)
+        assertEquals(BigDecimal("1.00"), parsed?.amount)
+        assertEquals("Ramesh", parsed?.merchant)
+        assertEquals(TransactionDirection.DEBIT, parsed?.direction)
+        assertEquals("987654321", parsed?.referenceId)
     }
 }
 

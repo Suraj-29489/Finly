@@ -15,6 +15,24 @@ class TransactionDirectionClassifierTest {
         assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("Amount deducted: INR 500 for Uber ride"))
         assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("Cash withdrawn: Rs 2000 from SBI ATM"))
         assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("Bill payment of ₹850 to Airtel successful"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("Paid Rs 500 at Starbucks"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("You sent ₹500 to Ramesh via UPI"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("Transferred ₹1,000 to Swiggy"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("A/c *1234 is Dr. for Rs 500 on 09-09-26"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("Charged INR 250 on card ending 4321"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("ATM withdrawal of Rs 1000 from Axis Bank"))
+    }
+
+    @Test
+    fun `classify - identifies negative amount terms as debit transactions`() {
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("-₹500 spent at Swiggy"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("A/c XX1234: -1.00 to Ramesh"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("Txn: -1"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("Google Pay: -50.00"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("-Rs. 250 paid via UPI"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("₹-120 debited from A/c"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("-1 sent to Friend"))
+        assertEquals(TransactionDirection.DEBIT, TransactionDirectionClassifier.classify("Account: -500.00"))
     }
 
     @Test

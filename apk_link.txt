@@ -7,14 +7,15 @@ https://github.com/Suraj-29489/Finly/raw/main/releases/Finly.apk
 https://raw.githubusercontent.com/Suraj-29489/Finly/main/releases/Finly.apk
 
 3. High-Speed Cloud Direct Download Mirror:
-https://tmpfiles.org/dl/wDwq4amuKtf4/finly.apk
+https://tmpfiles.org/dl/wlwH47mxRHuo/finly.apk
 
 4. Cloud Landing Page:
-https://tmpfiles.org/wDwq4amuKtf4/finly.apk
+https://tmpfiles.org/wlwH47mxRHuo/finly.apk
 
 APK Details:
-- App: Finly v1.0.2 (Cross-Channel Deduplication & Credit Message Skipping)
+- App: Finly v1.0.3 (Negative Amount Detection & Debit Classification Expansion)
+- Version Code: 3
 - Package: com.personalexpensetracker
-- File Size: 11.12 MB (11,662,261 bytes)
-- SHA-256: dd2d10a42ce45a9a43782aebb067bca9dc06829addd45c16d49f47be4b6a7d00
+- File Size: 11.12 MB (11,665,038 bytes)
+- SHA-256: eef1ca64e5cc0347f85dab50ab92a43cb07cc045ad161cc46c1b54ab9d634648
 - Permissions: POST_NOTIFICATIONS only (0 SMS permissions)

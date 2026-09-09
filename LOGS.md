@@ -555,5 +555,55 @@
   - Generated signed `Finly.apk` (v1.0.2, versionCode 2, 11.12 MB, SHA-256: `dd2d10a42ce45a9a43782aebb067bca9dc06829addd45c16d49f47be4b6a7d00`).
 
 ---
+
+# PHASE 15: NEGATIVE AMOUNT (- TERMS) DETECTION & DEBIT CLASSIFICATION EXPANSION
+
+## 1. Problem Addressed
+1. **Negative Amount Detection (`-` terms like `-1`, `-₹500`, `-Rs 100`, `-50.00`, `-INR 250`)**:
+   - Notifications and messages often represent expenses directly as negative deductions (e.g., `Txn: -1`, `Google Pay: -50.00`, `A/c XX1234: -1.00`, `-₹500 spent at Swiggy`).
+   - Previous parser required explicit currency symbols and positive numbers; negative currency amounts or currency-less negative numbers were missed or parsed as negative `BigDecimal`, causing rejection by safety validation (`amount <= 0`).
+2. **Comprehensive Debit Message Keywords & Indian Bank Formats**:
+   - Banking messages use varied debit phrasing: `"sent"`, `"paid at"`, `"debited"`, `"withdrawn"`, `"transferred to"`, `"charged"`, `"amount deducted"`, and Indian bank Dr statements (`"is Dr. for Rs 500"`, `"Dr with INR 500"`, `"ATM withdrawal"`).
+   - Inward transfers like `"transferred to your account"` were disambiguated to ensure they remain classified as credit, while outgoing transfers (`"transferred to Swiggy"`, `"sent to Ramesh"`) trigger debit.
+
+## 2. Technical Implementation
+1. **Negative Amount Pattern Detection in `TransactionDirectionClassifier.kt`**:
+   - Added `NEGATIVE_AMOUNT_REGEX` matching negative monetary amounts:
+     - Preceded by start-of-line, space, colon, semicolon, parenthesis, bracket, or pipe.
+     - Supports unicode minus variants (`-`, `−`, `–`, `—`).
+     - Supports currency symbols before or after minus (`-₹500`, `₹-500`, `-Rs 100`, `Rs.-100`, `-INR 250`, `-$50`, `$-50`).
+     - Supports currency-less negative numbers (`-1`, `-1.00`, `-500`, `-250.50`).
+   - Added balance exclusion check (`hasNegativeDebitAmount`) to verify the negative amount is not an overdraft balance (`Avl Bal: -500`).
+   - Negative amounts directly trigger `hasExplicitDebit = true` when no explicit credit signal is present.
+   - Disambiguated inward vs outward transfers using text masking (`"transferred to your account"` masked out of debit checks).
+2. **Negative Amount Extraction & Sanitization in `TransactionParser.kt`**:
+   - Updated `AMOUNT_PREFIX_REGEX` to match negative signs before or after currency symbols.
+   - Updated `AMOUNT_SUFFIX_REGEX` to match negative signs before numeric values.
+   - Added `AMOUNT_NEGATIVE_REGEX` matching currency-less negative numbers (`-1`, `-1.00`, `-500`, `-250.50`, etc.).
+   - In `parseAmountString`, sanitized all minus variants so extracted `BigDecimal` amounts are always clean, positive values (`amount.abs()`) suitable for Room database storage.
+   - Updated `extractReferenceId` to iterate all matches via `findAll` and safely skip negative amounts (`-1`), ensuring genuine reference IDs (`987654321`) are accurately captured.
+3. **Financial Notification Detector Updates (`FinancialNotificationDetector.kt`)**:
+   - Added `hasNegativeAmount(text)` helper and updated `isFinancialNotification` to consider negative amount indicators as strong financial signals.
+   - Enhanced `isSpecificBankSmsNotification` and `isSpecificBankEmailNotification` to recognize `"sent"`, `"transferred"`, `"charged"`, `"deducted"`, `"dr."`, `"dr by"`, and negative amounts.
+
+## 3. Automated Test Suite & Verification Results
+- `TransactionDirectionClassifierTest.kt`:
+  - Verified negative amounts (`-₹500 spent at Swiggy`, `A/c XX1234: -1.00 to Ramesh`, `Txn: -1`, `Google Pay: -50.00`, `-Rs. 250 paid via UPI`, `₹-120 debited from A/c`, `Account: -500.00`) are classified as `DEBIT`.
+  - Verified debit keywords (`"Paid Rs 500 at Starbucks"`, `"You sent ₹500 to Ramesh"`, `"Transferred ₹1,000 to Swiggy"`, `"A/c *1234 is Dr. for Rs 500"`, `"Charged INR 250 on card"`, `"ATM withdrawal of Rs 1000"`) are classified as `DEBIT`.
+  - Verified credit test suite (`"INR 5,000 transferred to your account..."`) remains 100% accurate as `CREDIT`.
+- `TransactionParserTest.kt`:
+  - Verified negative amounts with currency prefix (`-₹500`, `₹-500`, `-Rs 100`, `Rs.-100`, `-INR 1500`, `-$50`) parse to positive `BigDecimal`.
+  - Verified negative currency-less numbers (`Txn: -1`, `-1 debited`, `A/c XX1234: -1.00 to Ramesh`, `-250.50`) parse to positive `BigDecimal`.
+  - Verified end-to-end `parse` on negative amount notification (`Txn: -1 to Ramesh. Ref: 987654321`) yields `amount = 1.00`, `merchant = Ramesh`, `referenceId = 987654321`.
+- `CrossSourceDeduplicationIntegrationTest.kt`:
+  - Verified end-to-end pipeline creation for negative amount notification (`Txn: -1 to Ramesh`) inserts expense into Room DB with positive amount `1.00`.
+- **Master Test Suite Execution**:
+  - Ran `./gradlew testDebugUnitTest`: **444 / 444 unit tests PASSED (100% success rate)**.
+- **Release Build**:
+  - Bumped version to `1.0.3` (`versionCode = 3`).
+  - Ran `./gradlew assembleRelease`: **BUILD SUCCESSFUL in 11s**.
+  - Generated signed `Finly.apk` (v1.0.3, versionCode 3, 11.12 MB, SHA-256: `eef1ca64e5cc0347f85dab50ab92a43cb07cc045ad161cc46c1b54ab9d634648`).
+
+---
 *Log updated and certified on September 09, 2026.*
 
