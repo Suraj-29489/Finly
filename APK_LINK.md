@@ -1,6 +1,13 @@
-# 📱 Finly — Download & Installation Links
+# 📱 Finly — Download & Installation Links (v1.0.1 Play Store Compliant)
 
 Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
+
+---
+
+## 🛡️ Play Store Compliant & Private
+- **Zero Risky Permissions**: Removed `RECEIVE_SMS` and `READ_SMS` in full compliance with Google Play Store SMS policies.
+- **Inbuilt Messaging System**: Uses Android's native `NotificationListenerService` to capture bank receipts from default messaging apps (Google Messages, Samsung Messages, Xiaomi, Oppo, Vivo, etc.) and UPI/Banking apps.
+- **Strict Bank Message Filtering**: Captures **only** verified bank transaction messages (e.g. `VK-HDFCBK`, `VM-SBIINB`, `AD-ICICIB`) and completely ignores personal chats, family messages, and OTPs.
 
 ---
 
@@ -10,8 +17,8 @@ Official signed release of **Finly: Smart AI Expense & Financial Tracker**.
 |---|---|---|
 | **GitHub Permanent Release (Recommended)** | [⬇️ Download Finly.apk (GitHub)](https://github.com/Suraj-29489/Finly/raw/main/releases/Finly.apk) | Official Permanent Repository Hosting |
 | **GitHub Raw CDN** | [⬇️ Direct Raw CDN Link](https://raw.githubusercontent.com/Suraj-29489/Finly/main/releases/Finly.apk) | Direct CDN Download |
-| **High-Speed Cloud Mirror** | [⬇️ Instant Download Mirror](https://tmpfiles.org/dl/1788946631.5aa2af56f1b70038/w3wK4E4ZoDVY/app-release.apk) | One-Click Direct Phone Download |
-| **Cloud Landing Page** | [🌐 Open Download Page](https://tmpfiles.org/w3wK4E4ZoDVY/app-release.apk) | Browser Download Page with Button |
+| **High-Speed Cloud Mirror** | [⬇️ Instant Download Mirror](https://tmpfiles.org/dl/1788947797.991b1754971c50c8/w0wm4s4FFiF3/finly.apk) | One-Click Direct Phone Download |
+| **Cloud Landing Page** | [🌐 Open Download Page](https://tmpfiles.org/w0wm4s4FFiF3/finly.apk) | Browser Download Page with Button |
 
 ---
 
@@ -26,17 +33,18 @@ Scan this QR code with your Android phone's camera or Google Lens:
 ## 📦 APK Specifications & Integrity
 
 - **App Name:** Finly
-- **Package ID:** `com.surajkoley.expensetracker`
-- **Version:** `1.0.0`
+- **Package ID:** `com.personalexpensetracker`
+- **Version:** `1.0.1`
 - **Version Code:** `1`
-- **File Name:** `Finly.apk` (or `app-release.apk`)
-- **File Size:** `11.11 MB` (`11,645,997 bytes`)
+- **File Name:** `Finly.apk`
+- **File Size:** `11.11 MB` (`11,645,881 bytes`)
+- **Permissions Declared:** `POST_NOTIFICATIONS` only (0 SMS permissions)
 - **Min Android SDK:** `Android 8.0 (API 26)`
 - **Target Android SDK:** `Android 15 (API 35)`
 - **Signature Scheme:** `APK Signature Scheme v2 (Verified)`
 - **SHA-256 Checksum:**
   ```text
-  f8ab92538ec04ee4454cfa47051b8a8e2fe52e7138e2a8ba01e9730e2d7cb310
+  06613f6792f5f6bd2005af7a0385e22d3fb435dd52823418514542b4d90d4837
   ```
 
 ---
@@ -44,23 +52,23 @@ Scan this QR code with your Android phone's camera or Google Lens:
 ## 🛠️ Step-by-Step Phone Installation Guide
 
 1. **Download the APK:**
-   - Tap any download link above using Chrome, Firefox, or your phone's browser.
-   - If prompted with *"File might be harmful"*, tap **"Download anyway"** (this is Android's standard prompt for direct APKs not downloaded via Google Play Store).
+   - Tap any download link above in your phone browser.
+   - If prompted with *"File might be harmful"*, tap **"Download anyway"** (standard Android prompt for direct APK downloads outside Play Store).
 
 2. **Open the Installer:**
-   - Once downloaded, pull down your notification tray and tap **Finly.apk**, or open your phone's **Files** / **Downloads** app and tap the file.
+   - Pull down your notification bar and tap **Finly.apk**, or locate it in your **Downloads** folder.
+   - If prompted *"Allow from this source"*, tap **Settings** -> enable **Allow from this source** -> go back.
+   - Tap **Install** -> **Open**.
 
-3. **Allow Installation from Unknown Sources:**
-   - If Android prompts *"For your security, your phone is not allowed to install unknown apps from this source"*:
-     - Tap **Settings**.
-     - Toggle on **"Allow from this source"**.
-     - Tap the **Back** button.
+3. **Enable Notification Access (Automatic Expense Capture):**
+   - On first launch, Finly will ask you to enable **Notification Access**.
+   - Tap **Enable Access**.
+   - Select **Finly** and toggle it **ON**.
 
-4. **Install & Launch:**
-   - Tap **Install**.
-   - When finished, tap **Open**.
-
-5. **Grant First-Time Permissions:**
-   - **SMS Permission:** Tap **Allow** when Finly asks for SMS read permissions so it can automatically detect transaction receipts.
-   - **Notification Listener Access:** Follow the in-app prompt to enable notification capture in your phone's Notification Access settings.
-   - You're all set! Every debit/credit SMS and UPI notification will now be captured automatically into your local expense ledger.
+4. **⚠️ Android 13/14/15 "Restricted setting" Solution:**
+   - If Android shows *"Restricted setting: For your security, this setting is currently unavailable"*:
+     1. Go to phone **Settings** -> **Apps** -> **Finly** (App info).
+     2. In the top-right corner, tap the **3 dots (⋮)**.
+     3. Tap **"Allow restricted settings"** and verify with your PIN/fingerprint.
+     4. Return to **Notification Access** and toggle **Finly** ON!
+     *(Note: Once installed from Google Play Store, this step is never required!)*

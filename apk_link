@@ -1,4 +1,4 @@
-FINLY APK DOWNLOAD LINKS:
+FINLY APK DOWNLOAD LINKS (Play Store Compliant - Zero SMS Permissions):
 
 1. Official Permanent GitHub Release:
 https://github.com/Suraj-29489/Finly/raw/main/releases/Finly.apk
@@ -7,13 +7,14 @@ https://github.com/Suraj-29489/Finly/raw/main/releases/Finly.apk
 https://raw.githubusercontent.com/Suraj-29489/Finly/main/releases/Finly.apk
 
 3. High-Speed Cloud Direct Download Mirror:
-https://tmpfiles.org/dl/1788946631.5aa2af56f1b70038/w3wK4E4ZoDVY/app-release.apk
+https://tmpfiles.org/dl/1788947797.991b1754971c50c8/w0wm4s4FFiF3/finly.apk
 
 4. Cloud Landing Page:
-https://tmpfiles.org/w3wK4E4ZoDVY/app-release.apk
+https://tmpfiles.org/w0wm4s4FFiF3/finly.apk
 
 APK Details:
-- App: Finly v1.0.0
-- Package: com.surajkoley.expensetracker
+- App: Finly v1.0.1
+- Package: com.personalexpensetracker
 - File Size: 11.11 MB
-- SHA-256: f8ab92538ec04ee4454cfa47051b8a8e2fe52e7138e2a8ba01e9730e2d7cb310
+- SHA-256: 06613f6792f5f6bd2005af7a0385e22d3fb435dd52823418514542b4d90d4837
+- Permissions: POST_NOTIFICATIONS only (0 SMS permissions)

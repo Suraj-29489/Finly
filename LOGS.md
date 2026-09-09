@@ -456,7 +456,42 @@
 | **4.2** | Credit Income UI Live Reflection | `AllTransactions (Income Tab)` | Live Emulator UI Audit | **PASSED** |
 | **5.1** | Unified Cash Flow & Monthly Trends | `CashFlowAnalyticsScreen` | Live Emulator UI Audit | **PASSED** |
 | **6.1** | Privacy, Offline & Stability Boundary | Manifest, Scopes & Logs | Architectural Security Audit | **PASSED** |
+| **7.1** | Play Store SMS Policy Compliance | `AndroidManifest.xml` (0 SMS Perms) | `aapt dump permissions` | **PASSED** |
+| **7.2** | Default Messaging App Bank SMS Capture | `DefaultMessagingBankFilterTest` | Automated Unit Tests | **PASSED** |
+| **7.3** | Personal Chat & OTP Rejection | `FinancialNotificationDetector` | Automated Unit Tests | **PASSED** |
+| **7.4** | Android 13+ Restricted Settings Onboarding | `MainActivity`, `SettingsScreen` | Native Dialog & Intent Audit | **PASSED** |
 
 ---
-*Log generated and certified on September 09, 2026.*
+
+# PHASE 13: GOOGLE PLAY COMPLIANCE & BANK-SPECIFIC NOTIFICATION FILTERING
+
+## 1. Problem Addressed
+- **Google Play SMS Policy**: Personal finance and expense tracker apps requesting `RECEIVE_SMS` or `READ_SMS` are rejected during Play Store review under Google Play's SMS and Call Log policy.
+- **Android 13+ Restricted Settings**: On modern Android versions (13, 14, 15), sideloaded APKs have Notification Access disabled by default with "Restricted setting: For your security, this setting is currently unavailable."
+- **Inbuilt Messaging System Filtering**: Users receive bank SMS messages through their phone's default messaging app (Google Messages, Samsung Messages, Xiaomi, etc.). The app needed to filter and capture **only** specific bank transaction messages while completely ignoring personal chats, family messages, and OTPs.
+
+## 2. Technical Implementation
+1. **Manifest Permission Cleanup**:
+   - Removed `android.permission.RECEIVE_SMS` and `android.permission.READ_SMS`.
+   - Removed `FinlySmsReceiver` receiver entry from manifest.
+   - Added `android.permission.POST_NOTIFICATIONS` (standard Android 13+ runtime permission).
+   - Confirmed 0 SMS permissions via `aapt dump permissions`.
+2. **Default Messaging App Recognition**:
+   - Updated `SourceAwareParser.kt` to identify all OEM default messaging apps (`com.google.android.apps.messaging`, `com.samsung.android.messaging`, `com.miui.mms`, `com.coloros.mms`, `com.oppo.mms`, `com.vivo.mms`, `com.motorola.messaging`, `com.truecaller`, etc.).
+3. **Specific Bank SMS Validator**:
+   - Implemented `isSpecificBankSmsNotification(title, combinedText)` in `FinancialNotificationDetector.kt`.
+   - Checks TRAI alphanumeric bank headers (`^[A-Za-z]{2}-?[A-Za-z0-9]{5,9}$` like `VK-HDFCBK`, `AD-ICICIB`, `VM-SBIINB`, `AX-KOTAKB`, `BZ-AXISBK`) and known bank institution names.
+   - Requires account/card/transaction indicators (`a/c`, `acct`, `card ending`, `upi`, `txn`, `ref`).
+   - Rejects personal chats, contact senders, and OTPs.
+4. **Android 13+ Restricted Settings Onboarding & Guide**:
+   - Added educational onboarding dialog in `MainActivity.kt`.
+   - Added dedicated guide dialog and 1-tap shortcut to App Info (`Settings.ACTION_APPLICATION_DETAILS_SETTINGS`) in `SettingsScreen.kt`.
+   - Added live "Test Bank Notification Capture" simulator button in Settings.
+5. **Full Test Suite & Verification**:
+   - Added `DefaultMessagingBankFilterTest.kt` with 7 automated integration tests.
+   - **433 / 433 unit tests passed** (0 failures, 0 skipped).
+   - Release APK signed with Scheme v2 (`11.11 MB`).
+
+---
+*Log updated and certified on September 09, 2026.*
 

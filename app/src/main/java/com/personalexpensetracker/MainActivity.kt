@@ -111,7 +111,9 @@ import com.personalexpensetracker.ui.components.FinlyNavigationDestination
 import com.personalexpensetracker.ui.components.FinlySegmentedControl
 import com.personalexpensetracker.ui.screens.plan.PlanScreen
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.AutoAwesome
 import com.personalexpensetracker.ui.theme.ExpenseTrackerTheme
+import com.personalexpensetracker.ui.theme.FinlyPurple
 import com.personalexpensetracker.ui.theme.StatusSuccess
 
 class MainActivity : ComponentActivity() {
@@ -260,31 +262,88 @@ fun ExpenseTrackerAppShell(
     var recordsTabType by remember { mutableIntStateOf(0) } // 0 = Expense, 1 = Income
 
     val context = LocalContext.current
-    val hasSmsPermission = ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.RECEIVE_SMS
-    ) == PackageManager.PERMISSION_GRANTED
+    val isNotificationAccessGranted = androidx.core.app.NotificationManagerCompat
+        .getEnabledListenerPackages(context)
+        .contains(context.packageName)
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val receiveGranted = permissions[Manifest.permission.RECEIVE_SMS] == true
-        if (receiveGranted) {
-            settingsViewModel.toggleAutoCaptureSms(true)
+    var showNotificationOnboardingDialog by remember { mutableStateOf(false) }
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ -> }
+
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+        if (!isNotificationAccessGranted) {
+            showNotificationOnboardingDialog = true
         }
     }
 
-    LaunchedEffect(Unit) {
-        if (!hasSmsPermission) {
-            val perms = mutableListOf(
-                Manifest.permission.RECEIVE_SMS,
-                Manifest.permission.READ_SMS
-            )
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                perms.add(Manifest.permission.POST_NOTIFICATIONS)
+    if (showNotificationOnboardingDialog && !isNotificationAccessGranted) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showNotificationOnboardingDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.AutoAwesome,
+                    contentDescription = null,
+                    tint = FinlyPurple,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Automatic Expense Capture",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Finly automatically records your bank and UPI expenses directly from incoming receipts without needing risky SMS permissions.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "• 100% Local & Private (data never leaves your phone)\n• Only bank & payment notifications are analyzed\n• Personal chats and OTPs are completely ignored",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            confirmButton = {
+                androidx.compose.material3.Button(
+                    onClick = {
+                        showNotificationOnboardingDialog = false
+                        settingsViewModel.toggleAutoCaptureExpenses(true)
+                        try {
+                            val intent = android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                            val fallback = android.content.Intent(android.provider.Settings.ACTION_SETTINGS)
+                            fallback.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(fallback)
+                        }
+                    },
+                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = FinlyPurple)
+                ) {
+                    Text("Enable Access", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { showNotificationOnboardingDialog = false }
+                ) {
+                    Text("Maybe Later")
+                }
             }
-            permissionLauncher.launch(perms.toTypedArray())
-        }
+        )
     }
 
     // 1. Full-screen Edit Overlays

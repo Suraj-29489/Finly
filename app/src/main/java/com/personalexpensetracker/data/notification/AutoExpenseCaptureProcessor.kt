@@ -63,9 +63,19 @@ class AutoExpenseCaptureProcessor(
 
         val combinedText = notification.combinedText
 
-        // Gate 1: Financial notification detection
-        if (!FinancialNotificationDetector.isFinancialNotification(combinedText)) {
-            return NotificationProcessingResult.Ignored("Not a financial notification")
+        // Gate 1: Financial notification detection & Bank SMS filtering
+        val isMessagingApp = com.personalexpensetracker.data.notification.parser.SourceAwareParser.isMessagingApp(notification.packageName)
+        if (isMessagingApp) {
+            // If the notification came from an SMS/default messaging app, verify it is specifically
+            // a bank transaction message (reject personal chats, contact messages, and non-bank spam)
+            if (!FinancialNotificationDetector.isSpecificBankSmsNotification(notification.title, combinedText)) {
+                return NotificationProcessingResult.Ignored("Not a specific bank transaction message")
+            }
+        } else {
+            // For native banking and UPI apps, perform standard financial detection
+            if (!FinancialNotificationDetector.isFinancialNotification(combinedText)) {
+                return NotificationProcessingResult.Ignored("Not a financial notification")
+            }
         }
 
         // Gate 2: Debit/Credit classification
@@ -94,13 +104,14 @@ class AutoExpenseCaptureProcessor(
                     return NotificationProcessingResult.Duplicate(notification)
                 }
 
-                val source = if (parsedTransaction.sourcePackage == "sms") "SMS" else parsedTransaction.sourcePackage
+                val source = if (parsedTransaction.sourcePackage == "sms") "SMS" else if (isMessagingApp) "Bank SMS" else parsedTransaction.sourcePackage
+
                 val income = Income(
                     title = parsedTransaction.merchant ?: "Income",
                     amount = parsedTransaction.amount,
                     source = source,
                     date = parsedTransaction.transactionTime,
-                    notes = "Auto-captured from ${parsedTransaction.sourcePackage}"
+                    notes = "Auto-captured from $source"
                 )
 
                 val incomeId = incomeRepository.insertIncome(income)
@@ -144,12 +155,18 @@ class AutoExpenseCaptureProcessor(
         val category = MerchantCategoryResolver.resolveCategory(parsedTransaction.merchant)
 
         // Gate 6: Create expense through existing data layer
+        val sourceLabel = if (isMessagingApp) {
+            if (FinancialNotificationDetector.isBankSender(notification.title)) {
+                notification.title?.trim() ?: "Bank SMS"
+            } else "Bank SMS"
+        } else parsedTransaction.sourcePackage
+
         val expense = Expense(
             title = parsedTransaction.merchant ?: "Auto-captured expense",
             amount = parsedTransaction.amount,
             category = category,
             date = parsedTransaction.transactionTime,
-            notes = "Auto-captured from ${parsedTransaction.sourcePackage}"
+            notes = "Auto-captured from $sourceLabel"
         )
 
         val expenseId = expenseRepository.insertExpense(expense)

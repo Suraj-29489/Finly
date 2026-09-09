@@ -108,34 +108,10 @@ fun SettingsScreen(
         .getEnabledListenerPackages(context)
         .contains(context.packageName)
 
-    val smsPermissions = arrayOf(
-        android.Manifest.permission.RECEIVE_SMS,
-        android.Manifest.permission.READ_SMS
-    )
-
-    var isSmsPermissionGranted by remember {
-        mutableStateOf(
-            smsPermissions.all {
-                androidx.core.content.ContextCompat.checkSelfPermission(context, it) == android.content.pm.PackageManager.PERMISSION_GRANTED
-            }
-        )
-    }
-
-    val smsPermissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissionsMap ->
-        val allGranted = permissionsMap.values.all { it }
-        isSmsPermissionGranted = allGranted
-        if (allGranted) {
-            viewModel.toggleAutoCaptureSms(true)
-        } else {
-            viewModel.toggleAutoCaptureSms(false)
-        }
-    }
-
+    var showRestrictedSettingsDialog by remember { mutableStateOf(false) }
+    var testSimulationResult by remember { mutableStateOf<String?>(null) }
+    var isSimulating by remember { mutableStateOf(false) }
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
-    var isSyncingSms by remember { mutableStateOf(false) }
-    var syncResultText by remember { mutableStateOf<String?>(null) }
 
     Surface(
         modifier = modifier.fillMaxSize(),
@@ -235,7 +211,7 @@ fun SettingsScreen(
                             iconColor = Color(0xFFF59E0B),
                             iconBackground = Color(0xFFFEF3C7),
                             title = "Auto-Capture from Notifications",
-                            subtitle = "Detect debit expenses from bank, UPI & card notifications",
+                            subtitle = "Detect bank & UPI debit transactions directly from notifications",
                             checked = preferences.autoCaptureExpenses,
                             onCheckedChange = { viewModel.toggleAutoCaptureExpenses(it) }
                         )
@@ -262,54 +238,86 @@ fun SettingsScreen(
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-                        SettingsSwitchRow(
-                            icon = Icons.Outlined.Payments,
-                            iconColor = Color(0xFF3B82F6),
-                            iconBackground = Color(0xFFDBEAFE),
-                            title = "Auto-Capture from SMS",
-                            subtitle = "Detect debit expenses from bank & card SMS messages",
-                            checked = preferences.autoCaptureSms && isSmsPermissionGranted,
-                            onCheckedChange = { enable ->
-                                if (enable) {
-                                    if (isSmsPermissionGranted) {
-                                        viewModel.toggleAutoCaptureSms(true)
-                                    } else {
-                                        smsPermissionLauncher.launch(smsPermissions)
-                                    }
-                                } else {
-                                    viewModel.toggleAutoCaptureSms(false)
+                        // Restricted Settings Helper Row (Android 13+)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showRestrictedSettingsDialog = true }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(FinlyIconSquircleShape)
+                                        .background(Color(0xFFFEF3C7)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Info,
+                                        contentDescription = null,
+                                        tint = Color(0xFFD97706),
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Column {
+                                    Text(
+                                        text = "Trouble enabling on Android 13+?",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "How to unblock 'Restricted setting' in 3 steps",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
-                        )
+
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
 
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-                        SettingsPermissionRow(
-                            icon = Icons.Outlined.Payments,
-                            title = "SMS Permission",
-                            subtitle = if (isSmsPermissionGranted) "SMS receiver active for auto-capture" else "Tap to grant SMS permissions",
-                            isGranted = isSmsPermissionGranted,
-                            onClick = {
-                                smsPermissionLauncher.launch(smsPermissions)
-                            }
-                        )
-
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-
-                        // Sync Recent SMS row
+                        // Test Bank Message Simulation row
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    if (!isSmsPermissionGranted) {
-                                        smsPermissionLauncher.launch(smsPermissions)
-                                    } else {
-                                        coroutineScope.launch {
-                                            isSyncingSms = true
-                                            val count = com.personalexpensetracker.data.sms.SmsReader(context).syncRecentSms()
-                                            syncResultText = if (count > 0) "Captured $count expense(s) from recent SMS" else "No new transactions found in recent SMS"
-                                            isSyncingSms = false
+                                    coroutineScope.launch {
+                                        isSimulating = true
+                                        val testNotif = com.personalexpensetracker.data.notification.model.RawNotificationData(
+                                            packageName = "com.google.android.apps.messaging",
+                                            title = "VK-HDFCBK",
+                                            text = "Your A/c ending 4567 debited for INR 450.00 on 09-Sep-26 towards Swiggy. Ref: UPI112233. Avl Bal: INR 12,000",
+                                            subText = null,
+                                            bigText = null,
+                                            receivedAt = java.time.Instant.now(),
+                                            notificationKey = "test_bank_sms_${System.currentTimeMillis()}"
+                                        )
+                                        val processor = com.personalexpensetracker.data.notification.AutoExpenseCapturePipeline.getProcessor(context)
+                                        val res = processor.process(testNotif)
+                                        testSimulationResult = when (res) {
+                                            is com.personalexpensetracker.data.notification.model.NotificationProcessingResult.ExpenseCreated ->
+                                                "✓ Captured ₹${res.parsedTransaction.amount} expense (${res.parsedTransaction.merchant}, ${res.category})"
+                                            is com.personalexpensetracker.data.notification.model.NotificationProcessingResult.Duplicate ->
+                                                "✓ Already recorded (Duplicate prevented)"
+                                            else -> "Result: ${res::class.simpleName}"
                                         }
+                                        isSimulating = false
                                     }
                                 }
                                 .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -337,13 +345,13 @@ fun SettingsScreen(
 
                                 Column {
                                     Text(
-                                        text = "Sync Recent SMS",
+                                        text = "Test Bank Notification Capture",
                                         style = MaterialTheme.typography.bodyLarge,
                                         fontWeight = FontWeight.SemiBold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = if (isSyncingSms) "Scanning inbox for bank transactions..." else "Import past transactions from inbox",
+                                        text = if (isSimulating) "Simulating bank SMS..." else "Simulate VK-HDFCBK ₹450 Swiggy SMS",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -358,7 +366,7 @@ fun SettingsScreen(
                             )
                         }
 
-                        if (syncResultText != null) {
+                        if (testSimulationResult != null) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -368,7 +376,7 @@ fun SettingsScreen(
                                     .padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
                                 Text(
-                                    text = syncResultText ?: "",
+                                    text = testSimulationResult ?: "",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Medium,
                                     color = StatusSuccess
@@ -590,6 +598,69 @@ fun SettingsScreen(
             dismissButton = {
                 TextButton(onClick = { showResetConfirmationDialog = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showRestrictedSettingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestrictedSettingsDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    tint = Color(0xFFD97706),
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = { Text("Allowing Restricted Settings", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "On Android 13, 14 & 15, directly downloaded APKs have special permissions restricted by default with the message: 'Restricted setting: For your security, this setting is currently unavailable.'",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "To allow it in 3 quick steps:\n1. Tap 'Open App Info' below.\n2. In the top-right corner, tap the 3 dots (⋮).\n3. Tap 'Allow restricted settings' and verify your fingerprint/PIN.\n4. Return here and toggle Notification Access ON!",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Note: Once installed via Google Play Store, this manual step is never required.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showRestrictedSettingsDialog = false
+                        try {
+                            val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = android.net.Uri.fromParts("package", context.packageName, null)
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        } catch (_: Exception) {
+                            val fallback = Intent(Settings.ACTION_SETTINGS)
+                            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            context.startActivity(fallback)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = FinlyPurple)
+                ) {
+                    Text("Open App Info", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestrictedSettingsDialog = false }) {
+                    Text("Got It")
                 }
             }
         )

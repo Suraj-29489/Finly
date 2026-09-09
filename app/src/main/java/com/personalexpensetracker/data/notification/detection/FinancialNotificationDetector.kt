@@ -115,4 +115,82 @@ object FinancialNotificationDetector {
     private fun containsNumber(text: String): Boolean {
         return text.any { it.isDigit() }
     }
+
+    /**
+     * Regex matching Indian TRAI-regulated commercial / transactional bank SMS sender headers:
+     * Examples: VK-HDFCBK, VM-SBIINB, AD-ICICIB, BZ-AXISBK, AX-KOTAKB, JM-PAYTMB
+     * Format: 2 alpha characters, optional hyphen, 5 to 9 alphanumeric characters.
+     */
+    private val TRAI_BANK_HEADER_REGEX = Regex(
+        """^[A-Za-z]{2}-?[A-Za-z0-9]{5,9}$"""
+    )
+
+    /**
+     * Common bank and financial entity keywords in sender titles.
+     */
+    private val BANK_SENDER_KEYWORDS = listOf(
+        "bank", "banking", "hdfc", "sbi", "icici", "axis", "kotak", "pnb",
+        "bob", "canara", "union", "idfc", "rbl", "yes bank", "yesbnk",
+        "indusind", "federal", "hsbc", "citi", "standard chartered", "scb",
+        "cred", "paytm", "phonepe", "gpay", "google pay", "slice", "onecard",
+        "jupiter", "fi money", "bhim", "amazon pay", "mobikwik"
+    )
+
+    /**
+     * Contextual indicators that confirm the text describes an actual bank/card/account transaction.
+     */
+    private val ACCOUNT_CONTEXT_INDICATORS = listOf(
+        "a/c", "acct", "account", "card", "ending", "xxxx", "xx", "**",
+        "vpa", "upi", "ref", "txn", "avl bal", "balance", "pos"
+    )
+
+    /**
+     * Checks if a sender title matches a recognized bank or financial institution sender.
+     */
+    fun isBankSender(title: String?): Boolean {
+        if (title.isNullOrBlank()) return false
+        val cleanTitle = title.trim()
+
+        // Match TRAI format like VK-HDFCBK, AD-ICICIB, etc.
+        if (TRAI_BANK_HEADER_REGEX.matches(cleanTitle)) {
+            return true
+        }
+
+        // Match known bank names
+        val lower = cleanTitle.lowercase()
+        return BANK_SENDER_KEYWORDS.any { lower.contains(it) }
+    }
+
+    /**
+     * Determines whether a notification originating from an SMS / messaging app
+     * is specifically a bank or financial transaction message (and not a personal chat).
+     */
+    fun isSpecificBankSmsNotification(
+        title: String?,
+        combinedText: String
+    ): Boolean {
+        if (combinedText.isBlank()) return false
+        val lowerText = combinedText.lowercase()
+
+        // 1. Must pass standard financial detection (keywords, amount, not OTP/spam)
+        if (!isFinancialNotification(combinedText)) return false
+
+        // 2. Must have account or transaction context
+        val hasAccountContext = ACCOUNT_CONTEXT_INDICATORS.any { lowerText.contains(it) }
+
+        // 3. Check sender title: either a known bank sender OR strong account context with explicit debit/credit
+        val hasBankSender = isBankSender(title)
+
+        if (hasBankSender && hasAccountContext) {
+            return true
+        }
+
+        // If title is not standard TRAI header, require very strong bank signals in body:
+        // (explicit debit/credit + account reference + amount + bank mention)
+        val hasStrongBankBody = (lowerText.contains("debited") || lowerText.contains("credited")) &&
+                hasAccountContext &&
+                BANK_SENDER_KEYWORDS.any { lowerText.contains(it) }
+
+        return hasStrongBankBody
+    }
 }

@@ -66,10 +66,18 @@ object SourceAwareParser {
         "com.mobikwik_new" to SourceType.WALLET,             // MobiKwik
         "com.freecharge.android" to SourceType.WALLET,       // FreeCharge
 
-        // SMS (Android Messages / default SMS app)
+        // SMS (Android Messages / OEM default SMS apps / Truecaller)
         "com.google.android.apps.messaging" to SourceType.SMS,
         "com.android.mms" to SourceType.SMS,
-        "com.samsung.android.messaging" to SourceType.SMS
+        "com.samsung.android.messaging" to SourceType.SMS,
+        "com.miui.mms" to SourceType.SMS,
+        "com.coloros.mms" to SourceType.SMS,
+        "com.oppo.mms" to SourceType.SMS,
+        "com.oneplus.mms" to SourceType.SMS,
+        "com.vivo.mms" to SourceType.SMS,
+        "com.motorola.messaging" to SourceType.SMS,
+        "com.truecaller" to SourceType.SMS,
+        "sms" to SourceType.SMS
     )
 
     /**
@@ -94,13 +102,30 @@ object SourceAwareParser {
         // Check exact match first
         KNOWN_PACKAGES[packageName]?.let { return it }
 
-        // Check package name hints
+        // Check SMS / messaging apps pattern
         val lowerPackage = packageName.lowercase()
+        if (lowerPackage == "sms" ||
+            lowerPackage.contains(".mms") ||
+            lowerPackage.contains(".messaging") ||
+            lowerPackage.endsWith(".sms") ||
+            lowerPackage.contains("telephony")
+        ) {
+            return SourceType.SMS
+        }
+
+        // Check package name hints
         if (FINANCIAL_PACKAGE_HINTS.any { lowerPackage.contains(it) }) {
             return SourceType.PAYMENT // Generic financial
         }
 
         return SourceType.UNKNOWN
+    }
+
+    /**
+     * Returns true if the package represents an SMS / default messaging application.
+     */
+    fun isMessagingApp(packageName: String): Boolean {
+        return identifySource(packageName) == SourceType.SMS
     }
 
     /**
