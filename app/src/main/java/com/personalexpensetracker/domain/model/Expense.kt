@@ -16,5 +16,6 @@ data class Expense(
     val category: String,
     val date: Instant,
     val notes: String? = null,
-    val createdAt: Instant = Instant.now()
+    val createdAt: Instant = Instant.now(),
+    val recurringExpenseId: Long? = null
 )

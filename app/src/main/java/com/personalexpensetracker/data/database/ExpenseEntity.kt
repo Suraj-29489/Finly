@@ -2,6 +2,7 @@ package com.personalexpensetracker.data.database
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.Instant
 
@@ -11,7 +12,12 @@ import java.time.Instant
  * Monetary amount is stored as [Long] in minor units (cents/paise) to prevent
  * floating-point inaccuracy and support exact 64-bit integer SQL aggregations.
  */
-@Entity(tableName = "expenses")
+@Entity(
+    tableName = "expenses",
+    indices = [
+        Index(value = ["recurring_expense_id"])
+    ]
+)
 data class ExpenseEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
@@ -32,5 +38,8 @@ data class ExpenseEntity(
     val notes: String? = null,
 
     @ColumnInfo(name = "created_at")
-    val createdAt: Instant = Instant.now()
+    val createdAt: Instant = Instant.now(),
+
+    @ColumnInfo(name = "recurring_expense_id")
+    val recurringExpenseId: Long? = null
 )

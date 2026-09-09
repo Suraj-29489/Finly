@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Personal Expense Tracker"
+rootProject.name = "Finly"
 include(":app")

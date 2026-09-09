@@ -1,4 +1,4 @@
-# Personal Expense Tracker App
+# Finly (formerly Personal Expense Tracker)
 
 A clean, modern, and local-first personal finance and expense tracking Android application.
 

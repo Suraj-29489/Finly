@@ -17,7 +17,8 @@ fun ExpenseEntity.toDomain(): Expense {
         category = category,
         date = date,
         notes = notes,
-        createdAt = createdAt
+        createdAt = createdAt,
+        recurringExpenseId = recurringExpenseId
     )
 }
 
@@ -30,7 +31,7 @@ fun Expense.toEntity(): ExpenseEntity {
         category = category,
         date = date,
         notes = notes,
-        createdAt = createdAt
+        createdAt = createdAt,
+        recurringExpenseId = recurringExpenseId
     )
 }
-

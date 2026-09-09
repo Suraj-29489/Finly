@@ -30,6 +30,9 @@ interface ExpenseDao {
     @Query("DELETE FROM expenses WHERE id = :id")
     suspend fun deleteExpenseById(id: Long): Int
 
+    @Query("DELETE FROM expenses")
+    suspend fun deleteAllExpenses(): Int
+
     @Query("SELECT * FROM expenses WHERE id = :id")
     suspend fun getExpenseById(id: Long): ExpenseEntity?
 
@@ -47,4 +50,10 @@ interface ExpenseDao {
 
     @Query("SELECT SUM(amount_in_cents) FROM expenses")
     fun getTotalExpensesInCents(): Flow<Long?>
+
+    @Query("SELECT * FROM expenses WHERE recurring_expense_id = :recurringId ORDER BY date DESC")
+    fun getExpensesByRecurringId(recurringId: Long): Flow<List<ExpenseEntity>>
+
+    @Query("SELECT * FROM expenses WHERE recurring_expense_id = :recurringId ORDER BY date DESC")
+    suspend fun getExpensesByRecurringIdSync(recurringId: Long): List<ExpenseEntity>
 }
