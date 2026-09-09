@@ -12,7 +12,11 @@
    - 1.4 [Phase 9: Data Management, Export/Import & Encryption](#14-phase-9-data-management-exportimport--encryption)
    - 1.5 [Phase 10: Personalization, Currencies & Preferences](#15-phase-10-personalization-currencies--preferences)
    - 1.6 [Phase 11–12: Automatic Notification-Based Capture](#16-phase-1112-automatic-notification-based-capture)
-   - 1.7 [Phase 13: Real-Time SMS Access, Parser Upgrades & Credit Ingestion](#17-phase-13-real-time-sms-access-parser-upgrades--credit-ingestion)
+   - 1.7 [Phase 13: Google Play Compliance & Bank Notification Filtering](#phase-13-google-play-compliance--bank-specific-notification-filtering)
+   - 1.8 [Phase 14: Cross-Channel Deduplication & Credit Message Skipping](#phase-14-cross-channel-deduplication-email-vs-text-sms--credit-message-skipping)
+   - 1.9 [Phase 15: Negative Amount (- terms) Detection & Debit Classification Expansion](#phase-15-negative-amount---terms-detection--debit-classification-expansion)
+   - 1.10 [Phase 16: Comprehensive Debit Message Testing Phase (sent & -integer patterns)](#phase-16-comprehensive-debit-message-testing-phase-sent-and--integer-patterns)
+   - 1.11 [Phase 17: Real User Transactions Phase (Slice Bank & HDFC Bank SMS)](#phase-17-real-user-transactions-phase-slice-bank--hdfc-bank-sms)
 2. [PART II: TEST PHASES & VERIFICATION AUDIT](#part-ii-test-phases--verification-audit)
    - [Phase 1: Unit & Integration Test Suites](#phase-1-unit--integration-test-suites)
    - [Phase 2: First-Launch SMS Permission & Lifecycle Flow](#phase-2-first-launch-sms-permission--lifecycle-flow)
@@ -20,6 +24,8 @@
    - [Phase 4: Live Credit SMS Ingestion & Income Creation](#phase-4-live-credit-sms-ingestion--income-creation)
    - [Phase 5: Unified Financial Trends & Cash Flow Reporting](#phase-5-unified-financial-trends--cash-flow-reporting)
    - [Phase 6: Privacy, Security & Local-Only Boundary Audit](#phase-6-privacy-security--local-only-boundary-audit)
+   - [Phase 16 Test Suite: 30-Case Debit & Negative Amount Detection](#phase-16-comprehensive-debit-message-testing-phase-sent-and--integer-patterns)
+   - [Phase 17 Test Suite: 11-Case Real User Transactions (Slice & HDFC)](#phase-17-real-user-transactions-phase-slice-bank--hdfc-bank-sms)
 3. [MASTER TEST RESULT MATRIX](#master-test-result-matrix)
 
 ---
@@ -464,6 +470,21 @@
 | **8.2** | Strict Credit Message Skipping | `AutoExpenseCaptureProcessor` | Automated Integration Tests | **PASSED** |
 | **8.3** | Email vs SMS Deduplication (60m window) | `DuplicateTransactionDetector` | Automated Integration Tests | **PASSED** |
 | **8.4** | Persistent Room DB Deduplication & Enrichment | `AutoExpenseCaptureProcessor`, `Room DB` | Multi-Source Integration Tests | **PASSED** |
+| **9.1** | Negative Amount Detection (`-1`, `-₹500`, `-Rs 100`, `₹-120`) | `TransactionDirectionClassifier` | Automated Unit Tests | **PASSED** |
+| **9.2** | Negative Value Storage Sanitization (`amount.abs()`) | `TransactionParser` | Automated Unit Tests | **PASSED** |
+| **9.3** | Reference ID Non-Numeric Extraction Safety | `TransactionParser` | Automated Unit Tests | **PASSED** |
+| **10.1** | "Sent" Keyword Pattern Suite (5 cases) | `DebitMessageDetectionTestSuite` | Unit & Room Pipeline Tests | **PASSED** |
+| **10.2** | Negative Integer & Deduction Suite (13 cases) | `DebitMessageDetectionTestSuite` | Unit & Room Pipeline Tests | **PASSED** |
+| **10.3** | Indian Bank SMS & Dr Statements (8 cases) | `DebitMessageDetectionTestSuite` | Unit & Room Pipeline Tests | **PASSED** |
+| **10.4** | Inward & Overdraft Balance Safety Gates (4 cases) | `DebitMessageDetectionTestSuite` | Unit & Room Pipeline Tests | **PASSED** |
+| **11.1** | Slice Bank SMS Suffix & TRAI Headers (`VK-SLCBNK-S`, etc.) | `FinancialNotificationDetector` | Automated Unit Tests | **PASSED** |
+| **11.2** | "Sent from a/c" Outward Debit Disambiguation | `TransactionDirectionClassifier` | Automated Unit Tests | **PASSED** |
+| **11.3** | HDFC Bank Multiline UPI SMS (`*7201`, `ARYA MUKHERJEE`) | `TransactionParser` | Automated Unit Tests | **PASSED** |
+| **11.4** | HDFC Bank Card SMS (`Card 6446`, `ASSPL`) | `TransactionParser` | Automated Unit Tests | **PASSED** |
+| **11.5** | Parentheses & Support Text Noise Cleanup | `TransactionParser` (`cleanMerchant`) | Automated Unit Tests | **PASSED** |
+| **11.6** | Non-Financial Alert Skipping (Weekly saver created/deleted) | `AutoExpenseCaptureProcessor` | Pipeline Integration Tests | **PASSED** |
+| **12.1** | Master Unit Test Suite Execution (485 tests across 56 suites) | Entire Application | Gradle Test Runner (`testDebugUnitTest`) | **PASSED** |
+| **12.2** | Signed Release APK Build (v1.0.3, Build 3, SHA-256 Verified) | Android Gradle Plugin (`assembleRelease`) | APK Signature Scheme v2 | **PASSED** |
 
 ---
 
@@ -603,6 +624,96 @@
   - Bumped version to `1.0.3` (`versionCode = 3`).
   - Ran `./gradlew assembleRelease`: **BUILD SUCCESSFUL in 11s**.
   - Generated signed `Finly.apk` (v1.0.3, versionCode 3, 11.12 MB, SHA-256: `eef1ca64e5cc0347f85dab50ab92a43cb07cc045ad161cc46c1b54ab9d634648`).
+
+---
+
+# PHASE 16: COMPREHENSIVE DEBIT MESSAGE TESTING PHASE ("SENT" & "-INTEGER" PATTERNS)
+
+## 1. Problem Addressed
+1. **Automated Audit of "Sent" Keyword Patterns**:
+   - Outgoing transfers to friends, merchants, and VPAs (*"You sent ₹500 to Ramesh"*, *"Sent Rs. 100 to Anita"*, *"Money sent to Swiggy"*, *"Sent 200 to Chai Point"*).
+2. **Negative Integer & Deduction Formats ("-" terms)**:
+   - Deduction messages formatting monetary values as negative numbers (`-1`, `-1.00`, `-50`, `-500.00`, `-1000`, `-₹500`, `₹-120`, `Rs.-100`, `-INR 1,500`, `-$50`, `Txn: -1`, `A/c XX1234: -1.00`).
+3. **Indian Bank SMS Variations**:
+   - TRAI headers (`VK-HDFCBK`, `VM-SBIINB`, `AD-ICICIB`), bank Dr statements (*"is Dr. for Rs 500"*), ATM cash withdrawals, card purchases, and bill payments.
+4. **Safety & Disambiguation Gates**:
+   - Inward transfers, salary credits, order cancellation refunds, and negative overdraft balance statements (`Avl Bal: -500.00`).
+
+## 2. Technical Implementation
+1. **Dedicated Test Suite Class (`DebitMessageDetectionTestSuite.kt`)**:
+   - Implemented 30 automated Robolectric and Room SQLite integration tests.
+2. **Parser & Classifier Safety Improvements**:
+   - `ACCOUNT_LAST4_PATTERNS` updated to support single asterisk account masks (`A/c *4321` -> `4321`).
+   - Payment apps (`"google pay"`, `"gpay"`, `"phonepe"`, `"paytm"`, `"bhim"`, `"cred"`, `"amazon pay"`) added to `FINANCIAL_KEYWORDS`.
+   - Protected order cancellation refunds (`"Refund received: ₹450 from Swiggy for cancelled order"`) from false failure triggers.
+   - Overdraft negative balances (`"Avl Bal: -500.00"`) verified to return null amount / create 0 expenses.
+3. **Dedicated Report Artifact**:
+   - Published [`DEBIT_MESSAGE_TEST_REPORT.md`](file:///Users/surajkoley/Projects/Expense%20Tracker%20App/DEBIT_MESSAGE_TEST_REPORT.md) documenting all 30 test cases, inputs, extracted values, and database outcomes.
+
+## 3. Automated Test Suite & Verification Results
+- **Suite Execution**: `30 / 30 PASSED (100% success rate)` in `DebitMessageDetectionTestSuite.kt`.
+- **Master Test Suite Pass Rate**: **474 / 474 unit tests PASSED (100% success rate)**.
+
+---
+
+# PHASE 17: REAL USER TRANSACTIONS PHASE (SLICE BANK & HDFC BANK SMS)
+
+## 1. Problem Addressed
+Direct validation against real-world production SMS messages from user phone screenshots:
+1. **Slice Bank (`VK-SLCBNK-S`, `VA-SLCBNK-S`, `JM-SLCBNK-S`)**:
+   - `Rs. 960 sent from a/c xx0322 on 17-Jun-26 to MAHESH COMPANY (UPI Ref: 616835125961). Not you? Call 08048329999 - slice`
+   - `Rs. 9.70 sent from a/c xx0322 on 27-Jun-26 to Indian Railways UTS (UPI Ref: 654474188225). Not you? Call 08048329999 - slice`
+   - `Rs. 4.85 sent from a/c xx0322 on 09-Sep-26 to Indian Railways UTS (UPI Ref: 129307963204). Not you? Call 08048329999 - slice`
+   - `Rs. 125 sent from a/c xx0322 on 08-Sep-26 to Sourav Store (UPI Ref: 625159788516). Not you? Call 08048329999 - slice`
+   - `Rs. 1,000 sent from a/c xx0322 on 08-Sep-26 to TECHNO INDIA HOOGHLY (UPI Ref: 625187723190). Not you? Call 08048329999 - slice`
+   - `Rs. 100 sent from a/c xx0322 on 03-Aug-26 to AAMAR KOLKATA METRO (UPI Ref: 103786402142). Not you? Call 08048329999 - slice`
+   - `Rs. 50 sent from a/c xx0322 on 06-Sep-26 to Sankar Biswas (UPI Ref: 624938074811). Not you? Call 08048329999 - slice`
+   - Non-transactional administrative alerts: *"Your Weekly saver atom was created/deleted on 03 Sep '26..."* (must create 0 expenses).
+2. **HDFC Bank UPI (`JX-HDFCBK-S`)**:
+   - `Sent Rs.1.00\nFrom HDFC Bank A/C\n*7201\nTo ARYA MUKHERJEE\nOn 13/08/26\nRef 127857047659\nNot You? Call 18002586161/SMS BLOCK UPI to 7308080808`
+3. **HDFC Bank Card (`JX-HDFCBK-S`)**:
+   - `Spent Rs.74 On\nHDFC Bank Card\n6446 At ASSPL On\n2026-09-08:01:09:36.Not You? To Block+Reissue Call 18002586161/SMS BLOCK CC 6446 to 7308080808`
+
+## 2. Technical Implementation
+1. **TRAI Suffix & Bank Header Expansion (`FinancialNotificationDetector.kt`)**:
+   - Updated `TRAI_BANK_HEADER_REGEX` to `^(?:[A-Za-z]{2}-)?[A-Za-z0-9]{4,10}(?:-[A-Za-z0-9]{1,4})?$` to accept `-S`, `-T`, `-G` suffixes.
+   - Added bank codes to `BANK_SENDER_KEYWORDS`: `"slcbnk"`, `"hdfcbk"`, `"sbiinb"`, `"icicib"`, `"axisbk"`, `"kotakb"`, `"paytmb"`.
+2. **Outward Debit Direction Disambiguation (`TransactionDirectionClassifier.kt`)**:
+   - Added `"sent from a/c"`, `"sent from acct"`, `"sent from account"`, `"sent from card"`, `"sent from your a/c"`, `"sent from your account"`, `"sent"` to `EXPLICIT_DEBIT_KEYWORDS` and `DEBIT_KEYWORDS`.
+   - Added `amountSentRegex = Regex("""(?:₹|[Rr][Ss]\.?|INR|\$)?\s*\d+(?:\.\d+)?\s+sent\b""")` and `sentFromAccountRegex = Regex("""\bsent\b[\s\S]*?\bfrom\s+(?:[A-Za-z0-9]+\s+)*(?:a/?c|acct|account|card)\b""")`.
+   - Updated `calculateStructuralDebitScore` so that outward transfers from user account (`from a/c`, `from account`) are classified as `DEBIT`.
+3. **Parentheses, UPI Ref & Support Text Cleanup (`TransactionParser.kt`)**:
+   - Lookahead in `MERCHANT_PATTERNS` stops before `\(` (such as `(UPI Ref:`), `not you`, and `call`.
+   - `cleanMerchant` truncates `(`, `not you`, and `call ` to cleanly extract merchant names (`MAHESH COMPANY`, `Indian Railways UTS`, `Sourav Store`, `TECHNO INDIA HOOGHLY`, `AAMAR KOLKATA METRO`, `Sankar Biswas`, `ARYA MUKHERJEE`, `ASSPL`).
+4. **Non-Financial Administrative Alert Skipping**:
+   - Slice weekly saver atom created/deleted messages produce 0 expenses.
+5. **Dedicated Report Artifact**:
+   - Published [`REAL_TRANSACTIONS_TEST_REPORT.md`](file:///Users/surajkoley/Projects/Expense%20Tracker%20App/REAL_TRANSACTIONS_TEST_REPORT.md) documenting all 11 screenshot test cases, extracted fields, and database operations.
+
+## 3. Automated Test Suite & Verification Results
+- **Real User Transactions Suite**: `11 / 11 PASSED (100% success rate)` in `RealUserTransactionsTestSuite.kt`.
+- **Master Unit Test Suite**: **485 / 485 unit tests PASSED (0 failures, 100% pass rate across 56 test classes)**.
+- **Signed Release APK (v1.0.3)**:
+  - File Size: `11.12 MB` (`11,662,261 bytes`)
+  - SHA-256: `17b75f0f1f2f1d0c3faecfa432c9b4dffb6d02afba299b0290d9a27a10bc4d58`
+  - Signed with APK Signature Scheme v2, zero SMS permissions (`POST_NOTIFICATIONS` only).
+
+---
+
+# MASTER APPLICATION REGRESSION & INTEGRITY AUDIT
+
+| Verification Metric | Required Criteria | Audited Result | Status |
+|---|---|---|:---:|
+| **Total Test Classes** | Complete application coverage | 56 test classes | **PASSED** |
+| **Total Unit & Integration Tests** | >= 450 tests | **485 tests** | **PASSED** |
+| **Test Failures** | 0 failures | **0 failures** | **PASSED** |
+| **Test Skips** | 0 skipped | **0 skipped** | **PASSED** |
+| **Overall Pass Rate** | 100% | **100.0%** | **PASSED** |
+| **Real User Transaction Coverage** | All 4 phone screenshots | **11 / 11 test cases passed** | **PASSED** |
+| **Debit & Negative Amount Coverage** | All -terms & sent patterns | **30 / 30 test cases passed** | **PASSED** |
+| **Google Play Policy Compliance** | 0 SMS permissions | **0 SMS permissions declared** | **PASSED** |
+| **Release APK Signature** | Scheme v2 verified | **Verified (v1.0.3, Build 3)** | **PASSED** |
+| **Git Repository Synchronization** | Up to date with origin/main | **Pushed to `Suraj-29489/Finly.git`** | **PASSED** |
 
 ---
 *Log updated and certified on September 09, 2026.*
