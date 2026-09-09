@@ -1,6 +1,12 @@
-# Finly (formerly Personal Expense Tracker)
+# Finly — Smart AI Expense & Financial Tracker
 
-A clean, modern, and local-first personal finance and expense tracking Android application.
+[![Download APK](https://img.shields.io/badge/Download-Finly.apk-00C853?style=for-the-badge&logo=android&logoColor=white)](https://github.com/Suraj-29489/Finly/raw/main/releases/Finly.apk)
+[![Release v1.0.0](https://img.shields.io/badge/Release-v1.0.0-blue?style=for-the-badge)](APK_LINK.md)
+[![Tests Passing](https://img.shields.io/badge/Tests-426%20Passing-brightgreen?style=for-the-badge)](LOGS.md)
+
+A clean, modern, and local-first personal finance and expense tracking Android application with automated SMS & notification expense capture.
+
+> 📲 **Want to install on your phone?** Check out [APK_LINK.md](APK_LINK.md) for direct download links and easy setup instructions!
 
 ---
 
